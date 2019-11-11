@@ -12,7 +12,7 @@
 #include <kern/kdebug.h>
 
 #define CMDBUF_SIZE	80	// enough for one VGA text line
-
+#define ARG_LIMIT 5
 
 struct Command {
 	const char *name;
@@ -24,9 +24,34 @@ struct Command {
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
+	{ "test83", "runs code for lab1 exercise 8.3", _test83},
+	{ "test84", "runs code for lab1 exercise 8.3", _test84},
+	{ "test85", "runs code for lab1 exercise 8.3", _test85},
+	{ "backtrace", "prints stack backtrace", mon_backtrace}
 };
 
 /***** Implementations of basic kernel monitor commands *****/
+
+
+int 
+_test83(){
+	int x = 1, y = 32, z = 4;
+    cprintf("x %d, y %x, z %d\n", x, y, z);
+	return 0;
+}
+
+int
+_test84(){
+	unsigned int i = 0x00646c72;
+    cprintf("H%x Wo%s\n", 57616, &i);
+	return 0;
+}
+
+int 
+_test85(){
+	cprintf("x=%d y=%d\n", 3);
+	return 0;
+}
 
 int
 mon_help(int argc, char **argv, struct Trapframe *tf)
@@ -57,11 +82,28 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf)
 int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
-	// Your code here.
+	uint32_t current_ebp, return_address,old_ebp;
+	old_ebp = 0x0;
+	current_ebp = read_ebp();
+	while(current_ebp != old_ebp && current_ebp != 0){
+		return_address = *((int*)current_ebp + 1);
+		cprintf("ebp %x eip %x args ",current_ebp,return_address);
+		print_args(current_ebp, ARG_LIMIT);
+		old_ebp = current_ebp;
+		current_ebp = *((int*)current_ebp);
+	}
 	return 0;
 }
 
-
+void
+print_args(uint32_t addr, int limit){
+    int i =0;
+	uint32_t* start_addr = (uint32_t*)addr + 2;
+	for(i = 0; i < limit; i++){
+		cprintf("%x ", *(start_addr + i));
+	}
+	cprintf("\n");
+}
 
 /***** Kernel monitor command interpreter *****/
 
