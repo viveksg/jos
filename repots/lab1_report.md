@@ -279,7 +279,7 @@
 > Following is the snapshot after last recursive call (local variables ignored)
 
 >  | ebp register || previous ebp || return address ||  argument  |  
->  |              ||  (on stack)  ||    (on stack)  || (on stack) |  
+>  |&nbsp;  (register) &nbsp; &nbsp; ||  (on stack)  ||    (on stack)  || (on stack) |  
 >  ----------------------------------------------------------------
 >  | 0xf010ff38   ||  0xf010ff58  ||    0xf01000a1  || 0x00000000 |  
 >  ----------------------------------------------------------------
