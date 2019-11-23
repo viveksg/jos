@@ -109,3 +109,209 @@
 > Commenting movl %eax %cr0 doesn't enables paging and so any virtual address access results  
 > SEG FAULT. And this is what exactly happens when kernel tries to execute **jmp %eax**  
 > In Kern/entry.s, which involves jumping to relocated point.
+
+> ## Exercise 8
+> 1. Explain the interface between printf.c and console.c.  
+>    Specifically, what function does console.c export? How is this function used by printf.c?
+> ##### Solution:  
+>     Character passed for the purpose of printing in cprintf function are passed to console.c
+>     "cputchar" function to carryout I/O tasks required to print a character on screen
+
+> 2. Explain the following from console.c 
+> <code>
+>         if (crt_pos >= CRT_SIZE) {
+>            int i;
+>            memmove(crt_buf, crt_buf + CRT_COLS, (CRT_SIZE - CRT_COLS) * sizeof(uint16_t));
+>            for (i = CRT_SIZE - CRT_COLS; i < CRT_SIZE; i++)
+>                crt_buf[i] = 0x0700 | ' ';
+>            crt_pos -= CRT_COLS;
+>         }
+>  </code>
+
+> ##### Solution: 
+> This creates a new line in the end of the code and scrolling the output down.
+> Console output requires tp shpw the most recent n bytes which could be stored in display buffer  
+> When buffer size is greater than screen size of the display, the display buffer is updated  
+> The display buffer can contain 25x80 = 2000 characters. When update is required, the code  
+> Replaced first 80 characters with next 80 characters and then last 80 characters are filled  
+> With space or blank, producing a downwards scroll effect.
+
+> 3. Trace the execution of the following code step-by-step:  
+>  <code>
+>    int x = 1, y = 3, z = 4;
+>    cprintf("x %d, y %x, z %d\n", x, y, z);
+>  </code> 
+> In the call to cprintf(), to what does fmt point? To what does ap point?  
+> List (in order of execution) each call to cons_putc, va_arg, and vcprintf.  
+> For cons_putc, list its argument as well. For va_arg, list what ap points  
+> to before and after the call. For vcprintf list the values of its two arguments. 
+
+> ##### Solution:
+>  Code will be executed by running command "test83". Detailed logic can be found in monitor.c.
+> "fmt" points to format string or character array <"x %d, y %x, z %d">
+> "ap" points to variable argument list's pointer or starting address and it is incremented
+   Each time with increment size depending on format specifier, after call to va_arg.
+
+> ###### Execution order
+> <code>
+>   vprintf(fmt = 0xf0101d80 "x %d, y %x, z %d" , ap = 0xf010ff44 "\001")  
+>   cons_putc(c = 120)  
+>   cons_putc(c = 32)    
+>   ap = 0xf010ff44  
+>   va_arg()  
+>   ap = 0xf010ff48  
+>   cons_putc(c = 49)  
+>   cons_putc(c = 44)  
+>   cons_putc(c = 32)  
+>   cons_putc(c = 121)  
+>   cons_putc(c = 32)  
+>   ap = 0xf010ff48  
+>   va_arg()  
+>   ap = 0xf010ff4c  
+>   cons_putc(c = 51)  
+>   cons_putc(c = 44)  
+>   cons_putc(c = 32)  
+>   cons_putc(c = 122)  
+>   cons_putc(c = 32)    
+>   ap = 0xf010ff4c  
+>   va_arg()  
+>   ap = 0xf010ff50  
+>   cons_putc(c = 52)  
+>   cons_putc(c = 10)  
+> </code>    
+ 
+> 4. Run the following code.  
+> <code>  
+>    unsigned int i = 0x00646c72;
+>    cprintf("H%x Wo%s", 57616, &i);
+> </code>    
+>  What is the output? Explain how this output is arrived at in the step-by-step manner of the  
+>  Previous exercise.  
+>  The output depends on that fact that the x86 is little-endian.  
+>  If the x86 were instead big-endian what would you set i to in order to yield the same output?  
+>  Would you need to change 57616 to a different value?
+
+> ##### Solution:
+> Code will be executed by running command "test84". Detailed logic can be found in monitor.c.
+> Output:  He110 World
+> Order of Execution:
+>   cons_putc(c = 72)
+>   vprintfmt(putch = 0xf0100a7b,
+              putdat 0xf010fef2
+              fmt = 0xf0101d92 "H%x Wo%s\n"
+              ap = 0xf010ff34)
+>   cons_putc(c = 101)
+>   cons_putc(c = 49)
+>   cons_putc(c = 49)
+>   cons_putc(c = 48)
+>   cons_putc(c = 32)
+>   cons_putc(c = 87)
+>   cons_putc(c = 111)
+>   ap = 0xf010ff38
+>   va_arg()
+>   ap = 0xf010ff38
+>   cons_putc(c = 114)
+>   cons_putc(c = 108)
+>   cons_putc(c = 100)
+>   cons_putc(c = 10)
+
+> If x86 would have been big-endian instead of little endian then value of
+> ** i should be 0x726c6400 ** to produce same effect.
+> There will no change required for 57616, if x86 is big-endian.
+> 57616 will be stored as 0x000010e1, but this value will be interpreted as 57616  
+> When it is printed back to console.  
+
+
+> 5. In the following code, what is going to be printed after 'y='?)? Why does this happen?  
+>  <code>
+>       cprintf("x=%d y=%d", 3);
+>  </code>
+> ##### Solution
+>  The values to printed against format specifier are stored in a memory location as a    
+>  Variable length list, whose pointer is saved in variable "ap". 
+>  Every console print requires call to va_arg, which retrives next argument to be printed   
+>  And this involves incrementing the pointer to next value  
+>  (increment size depends on format specifier or type of value stored).  
+>  So in above expression after 3 printed the va_arg will increment to the pointer to   
+>  Next location in variable length list, which will contain garbage value,   
+>  and that will be printed.
+
+> 6. Let's say that GCC changed its calling convention so that it pushed arguments on the stack  
+>    In declaration order, so that the last argument is pushed last. How would you have to   
+>    Change cprintf or its interface so that it would still be possible to pass it a  
+>    Variable number of arguments?
+> ##### Solution  
+>  If calling convention is changed for gcc such that last argument is stored last then gcc will
+>  Generate address accordingly and internal bultin libraries will be modified accordingly to  
+>  Access function arguments and set up access frames. Therefore no changes will be required in  
+>  cprintf
+
+
+> #### Exercise 9. 
+> Determine where the kernel initializes its stack, and exactly where in memory 
+> Its stack is located. How does the kernel reserve space for its stack?  
+> And at which "end" of this reserved area is the stack pointer initialized to point to?
+
+> ##### Solution
+> Entry.s creates a initial kernel stack and reset (fill with 0s) 32 KB region above  
+> bootstacktop. It can be found in memlayout.h that kstack size = 8x4096 = 32KB  
+> <code>
+>      value of bootstacktop = 0xf0110000
+>      So starting address of stack = 0xf0110000 - 0x00008000 = 0xf0108000
+>      So virtual address of kstack is from [0xf0108000, 0xf0110000) or
+>      And physical adddress of kstack is [0x00108000, 0x00110000)
+> </code>
+
+> #### Exercise 10.
+> To become familiar with the C calling conventions on the x86, find the address of the  
+> Test_backtrace function in obj/kern/kernel.asm, set a breakpoint there,  
+> And examine what happens each time it gets called after the kernel starts.  
+> How many 32-bit words does each recursive nesting level of test_backtrace push on the stack,  
+> And what are those words?
+
+> ##### Solution
+> Each recursive call push following info onto the stack
+>  a. Value of test argument
+>  b. Return address
+> When the Test_backtrace execution is started ** value of previous** ebp is also pushed by  
+> Test_backtrace.
+
+> Following is the snapshot after last recursive call (local variables ignored)
+
+>  | ebp register || previous ebp || return address ||  argument  |
+>  |              ||  (on stack)  ||    (on stack)  || (on stack) |
+>  ----------------------------------------------------------------
+>  | 0xf010ff38   ||  0xf010ff58  ||    0xf01000a1  || 0x00000000 |
+>  ----------------------------------------------------------------
+>  | 0xf010ff58   ||  0xf010ff78  ||    0xf01000a1  || 0x00000001 |
+>  ----------------------------------------------------------------
+>  | 0xf010ff78   ||  0xf010ff98  ||    0xf01000a1  || 0x00000002 |
+>  ----------------------------------------------------------------
+>  | 0xf010ff98   ||  0xf010ffb8  ||    0xf01000a1  || 0x00000003 |
+>  ----------------------------------------------------------------
+>  | 0xf010ffb8   ||  0xf010ffd8  ||    0xf01000a1  || 0x00000004 |
+>  ----------------------------------------------------------------
+>  | 0xf010ffd8   ||  0xf010fff8  ||    0xf01000a1  || 0x00000005 |
+>  ----------------------------------------------------------------
+
+
+> #### Exercise 11: code implemented
+> ##### Comments
+>  Based on x86 calling convention, the function arguments are pushed on stack first, with last  
+>  Argument being pushed first. Then return address is pushed and function call is made.  
+>  In function implementation value of ebp is pushed on stack and then current value of  
+>  stack pointer is saved in ebp register. 
+
+>  So at any given instance ebp register holds pointer of previous ebp, subtracting one from ebp  
+>  Pointer will provide return address and subtracting 2 provides the agument list.
+
+>  Based on the facts mentioned above a recursive or iterative function could be created to 
+   Move from one ebp value to the other and unpacking return address and arguments in process.
+   Iterative Implementation can be found "mon_backtrace" function is kern/monitor.c
+
+
+
+
+     
+
+
