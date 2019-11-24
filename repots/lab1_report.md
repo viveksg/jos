@@ -295,7 +295,7 @@
 >  ----------------------------------------------------------------
 
 
-> #### Exercise 11: code implemented
+> #### Exercise 11: [Code implemented]
 > ##### Comments
 >  Based on x86 calling convention, the function arguments are pushed on stack first, with last  
 >  Argument being pushed first. Then return address is pushed and function call is made.  
@@ -310,8 +310,32 @@
    Iterative Implementation can be found "mon_backtrace" function is kern/monitor.c
 
 
+> #### Exercise 12: [Code Implemented]  
+> Modify your stack backtrace function to display, for each eip, the function name,
+> Source file name, and line number corresponding to that eip.  
+> In debuginfo_eip, where do __STAB_* come from? 
+> Complete the implementation of debuginfo_eip by inserting the call to stab_binsearch to  
+> Find the line number for an address. Add a backtrace command to the kernel monitor,  
+> And extend your implementation of mon_backtrace to call debuginfo_eip and  
+> Print a line for each stack frame.
 
+> #### Solution:
+> GCC compilers allows to inject debugging information in form of stabs in object files.
+> Which after slight tanslation during linking is maintained in a symbol table,  
+> And that symbol table is being created in memory as well.  
+> The location of stab table can be found by viewing stab section data in objdump of kernel elf.  
+> Any string value associated with stab is stored in separate stabstr table. 
 
-     
+> The Symbol table entry is defined by symbol table structure of 12 bytes provided in inc/stab.h  
+> In kern/kernel.ld __STAB_* variables are set to point to begining and the end of symbol table   
+> And stabstr section.
+
+> Line related information is printed using "print_line_data" function in  kern/monitor.c
+> It internally sends the return address along with blank line info structure to debug_info  
+> Function in kern/kedug.c. Function debug_info uses binary search to narrow down the File,  
+> Function and line info. The exact line number can be found in "n_desc" field for symbol table  
+> Entry related to return address eip value. Actual implementation can be found in monitor.c and  
+> kedebug.c .
+
 
 
