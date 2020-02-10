@@ -99,10 +99,10 @@ boot_alloc(uint32_t n)
 	// nextfree.  Make sure nextfree is kept aligned
 	// to a multiple of PGSIZE.
 	if(n == 0)
-	   return nextfree;
+	   return nextfree;  
 	char * allocated_address = nextfree;
-	nextfree = ROUNDUP((char *) nextfree + n, PGSIZE);   
-    uint32_t diff = (uint32_t)(nextfree - KERNBASE);
+	nextfree =  (char *)ROUNDUP((uint32_t)(nextfree + n), PGSIZE);   
+    uint32_t diff = (uint32_t)nextfree - KERNBASE;
 	if(diff > npages * PGSIZE)
 		   panic("error: Insufficient memory (requested %u KB)", diff/1024);
 	return allocated_address;	   
@@ -130,7 +130,6 @@ mem_init(void)
 	//////////////////////////////////////////////////////////////////////
 	// create initial page directory.
 	kern_pgdir = (pde_t *) boot_alloc(PGSIZE);
-	cprintf("address = %d",kern_pgdir);
 	memset(kern_pgdir, 0, PGSIZE);
 
 	//////////////////////////////////////////////////////////////////////
@@ -252,12 +251,11 @@ page_init(void)
 	// NB: DO NOT actually touch the physical memory corresponding to
 	// free pages!
 	size_t i;
-	uint32_t extphysmem_firstpg = ROUNDDOWN(EXTPHYSMEM, PGSIZE);
-	uint32_t kernel_boot_pg_limit = ROUNDUP((uint32_t) PADDR(boot_alloc(0)), PGSIZE); //ROUNDUP( 4 * 1024 * 1024, PGSIZE);
-	uint32_t iophysmem_first_pg = ROUNDDOWN(IOPHYSMEM, PGSIZE);
-	cprintf("\niophysmem = %d, extphysmem = %d, kernel_limit = %d\n", iophysmem_first_pg, extphysmem_firstpg, kernel_boot_pg_limit);
+	uint32_t extphysmem_firstpg = EXTPHYSMEM / PGSIZE;
+	uint32_t kernel_boot_pg_limit = PADDR(boot_alloc(0)) / PGSIZE;
+	uint32_t iophysmem_first_pg = IOPHYSMEM / PGSIZE;
 	for (i = 0; i < npages; i++) {
-		if(i == 0 || (i >= iophysmem_first_pg && i <= kernel_boot_pg_limit) ){
+		if(i == 0 || (i >= iophysmem_first_pg && i < kernel_boot_pg_limit) ){
 		   pages[i].pp_ref = 1;
 		   continue;
 		}
