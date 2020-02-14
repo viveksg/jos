@@ -65,6 +65,10 @@
 #define PTE_PS		0x080	// Page Size
 #define PTE_G		0x100	// Global
 
+// pgdir_walk flags
+#define CREATE_PAGE  0x1
+#define DO_NOT_CREATE_PAGE = 0x0
+
 // The PTE_AVAIL bits aren't used by the kernel or interpreted by the
 // hardware, so user processes are allowed to set them arbitrarily.
 #define PTE_AVAIL	0xE00	// Available for software use
