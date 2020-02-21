@@ -2,7 +2,8 @@
 #include <inc/string.h>
 #include <inc/memlayout.h>
 #include <inc/assert.h>
-
+#include <inc/mmu.h>
+#include <kern/pmap.h>
 #include <kern/kdebug.h>
 
 extern const struct Stab __STAB_BEGIN__[];	// Beginning of stabs table
@@ -203,4 +204,41 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 			info->eip_fn_narg++;
 
 	return 0;
+}
+
+void
+print_range_data(uint32_t start_addr, uint32_t end_addr){
+     uint32_t i = 0;
+	 for( i = start_addr ; i < end_addr; i += PGSIZE)
+	 {
+	    print_address_metadata((const void *)i);
+		cprintf("--------------------------------------------------------------------------------");
+	 }
+	 print_address_metadata((const void *)i);	
+}
+
+void 
+print_address_metadata(const void * va){
+	cprintf("\nAddress = %x:\n", va);
+	pde_t * pt_base = &kern_pgdir[PDX(va)];
+	if(pt_base && (*pt_base & PTE_P))
+	{
+        cprintf("Page Table base = %x ", *pt_base);
+        pte_t * pt_entry = (pte_t*)KADDR(PTE_ADDR(*pt_base));
+        pte_t * pt_data = &pt_entry[PTX(va)];
+		if(pt_data && (*pt_data & PTE_P))
+		{
+           cprintf("Page Address, Physical = %x, Virtual = %x, Permissions = %x\n",PTE_ADDR(*pt_data), KADDR(PTE_ADDR(*pt_data)), (*pt_data & 0xFFF));
+		}
+		else
+		{
+	       cprintf("No valid page table entry present\n");
+		}
+		
+	}	    
+	else
+	{
+        cprintf("No page directory entry exists for this address\n");
+	}
+	
 }

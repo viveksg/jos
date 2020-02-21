@@ -6,10 +6,10 @@
 #include <inc/memlayout.h>
 #include <inc/assert.h>
 #include <inc/x86.h>
-
 #include <kern/console.h>
-#include <kern/monitor.h>
 #include <kern/kdebug.h>
+#include <kern/monitor.h>
+#include "khelper.h"
 
 #define CMDBUF_SIZE	80	// enough for one VGA text line
 #define ARG_LIMIT 5
@@ -29,11 +29,33 @@ static struct Command commands[] = {
 	{ "test83", "runs code for lab1 exercise 8.3", _test83},
 	{ "test84", "runs code for lab1 exercise 8.3", _test84},
 	{ "test85", "runs code for lab1 exercise 8.3", _test85},
-	{ "backtrace", "prints stack backtrace", mon_backtrace}
+	{ "backtrace", "prints stack backtrace", mon_backtrace},
+	{ "showmappings", "prints address mappings for give range", showmappings},
+	{ "setperms", "sets permissions for give virtual address", setperms},
+	{ "dumpdata", "prints data and metadata for given virtual address range", dumpdata}
 };
 
 /***** Implementations of basic kernel monitor commands *****/
 
+int showmappings(int argc, char **argv, struct Trapframe *tf){
+   char *arg_list = *argv;
+   uint32_t start_address = kern_atoi(argv[1]) ;
+   uint32_t  end_address =  kern_atoi(argv[2]);
+   if(start_address > end_address || start_address < 0 )
+       panic("invalid address range\n");
+   cprintf("Address Range Mappings%x %x\n", start_address, end_address);
+   cprintf("---------------------------------------------------------------------\n");
+   print_range_data(start_address, end_address);	   
+   return 0;
+}
+
+int setperms(int argc, char **argv, struct Trapframe *tf){
+   return 0;	
+}
+
+int dumpdata(int argc, char **argv, struct Trapframe *tf){
+   return 0;	
+}
 
 int 
 _test83(){

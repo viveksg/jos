@@ -15,6 +15,8 @@ struct Eipdebuginfo {
 	int eip_fn_narg;		// Number of function arguments
 };
 
-int debuginfo_eip(uintptr_t eip, struct Eipdebuginfo *info);
+int debuginfo_eip(uintptr_t , struct Eipdebuginfo *);
+void print_range_data(uint32_t, uint32_t);
+void print_address_metadata(const void *);
 
 #endif
