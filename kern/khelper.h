@@ -6,5 +6,5 @@
 uint32_t kern_atoi(char * data);
 bool is_hex_string(char * data);
 uint32_t parse_base16_string(char * data);
-uint32_t parse_base10_string(char * data);
+uint32_t parse_base10_string(char * data);             
 #endif

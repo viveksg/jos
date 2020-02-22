@@ -11,7 +11,36 @@ extern const struct Stab __STAB_END__[];	// End of stabs table
 extern const char __STABSTR_BEGIN__[];		// Beginning of string table
 extern const char __STABSTR_END__[];		// End of string table
 
+const char *pdte_four_kb_perms[] = {
+                               "Present: ",
+                               "Read/Write: ",
+                               "User/Supervison: ",
+                               "Write-Through: ",
+                               "Cache Disabled: ",
+                               "Accessed: ",
+                               "Dirty: ",
+                               "Page Table Attribute Index: ",
+                               "Global Page: ",
+                               "Available: "
+                               };
 
+const char *pde_four_mb_perms[] = {
+                               "Present: ",
+                               "Read/Write: ",
+                               "User/Supervison: ",
+                               "Write-Through: ",
+                               "Cache Disabled: ",
+                               "Accessed: ",
+                               "Dirty: ",
+                               "Page Size (1 indicates 4 MBytes) : ",
+                               "Global Page: ",
+                               "Available: ",
+                               "Page table attribute index"
+                               };
+const uint8_t pdte_four_kb_byte_info[10] = {1,1,1,1,1,1,1,1,1,3};
+const uint8_t pdte_four_mb_byte_info[11] = {1,1,1,1,1,1,1,1,1,3,1};
+const uint8_t pdte_four_kb_len = 10;    
+const uint8_t pdte_four_mb_len = 11;      
 // stab_binsearch(stabs, region_left, region_right, type, addr)
 //
 //	Some stab types are arranged in increasing order by instruction
@@ -219,16 +248,20 @@ print_range_data(uint32_t start_addr, uint32_t end_addr){
 
 void 
 print_address_metadata(const void * va){
-	cprintf("\nAddress = %x:\n", va);
+	cprintf("\nAddress = 0x%x:\n", va);
 	pde_t * pt_base = &kern_pgdir[PDX(va)];
 	if(pt_base && (*pt_base & PTE_P))
 	{
-        cprintf("Page Table base = %x ", *pt_base);
+        cprintf("Page Table base = 0x%x ", *pt_base);
         pte_t * pt_entry = (pte_t*)KADDR(PTE_ADDR(*pt_base));
         pte_t * pt_data = &pt_entry[PTX(va)];
 		if(pt_data && (*pt_data & PTE_P))
 		{
-           cprintf("Page Address, Physical = %x, Virtual = %x, Permissions = %x\n",PTE_ADDR(*pt_data), KADDR(PTE_ADDR(*pt_data)), (*pt_data & 0xFFF));
+           cprintf("Page Address, Physical = 0x%x, Virtual = 0x%x, Permissions = 0x%x\n",PTE_ADDR(*pt_data), KADDR(PTE_ADDR(*pt_data)), ((*pt_data) & 0xFFF));
+		   cprintf("Page Directory entry permissions\n");
+		   print_permission(((*pt_base) & 0xFFF), pdte_four_kb_perms, pdte_four_kb_byte_info, pdte_four_kb_len);
+		   cprintf("\nPage Table entry permissions\n");
+		   print_permission(((*pt_data) & 0xFFF), pdte_four_kb_perms, pdte_four_kb_byte_info, pdte_four_kb_len);
 		}
 		else
 		{
@@ -241,4 +274,24 @@ print_address_metadata(const void * va){
         cprintf("No page directory entry exists for this address\n");
 	}
 	
+}
+
+void 
+print_permission(int perms, const char** perm_str, const uint8_t bit_info[], const uint8_t size){
+      uint8_t i = 0, bit_len = 0, bit = 0, j = 0;
+	  char  perm_data[4];
+	  char *perm_bits = perm_data;
+	  for(i = 0; i < size ; i++){
+           bit_len = bit_info[i];
+		   while(bit_len-- > 0){
+              bit = perms & 1;
+			  perms = perms >> 1;
+			  *perm_bits = (('0') + bit);
+			  perm_bits++;
+		   }
+		   *perm_bits += '\0';
+		   perm_bits = perm_data;
+		   cprintf("%s %s\n", perm_str[i], perm_data);
+	  }
+
 }
