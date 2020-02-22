@@ -38,7 +38,6 @@ static struct Command commands[] = {
 /***** Implementations of basic kernel monitor commands *****/
 
 int showmappings(int argc, char **argv, struct Trapframe *tf){
-   char *arg_list = *argv;
    uint32_t start_address = kern_atoi(argv[1]) ;
    uint32_t  end_address =  kern_atoi(argv[2]);
    if(start_address > end_address || start_address < 0 )
@@ -50,7 +49,15 @@ int showmappings(int argc, char **argv, struct Trapframe *tf){
 }
 
 int setperms(int argc, char **argv, struct Trapframe *tf){
-   return 0;	
+   uint32_t address = kern_atoi(argv[1]);
+   uint32_t mode = kern_atoi(argv[2]);
+   uint32_t new_permissions = kern_atoi(argv[3]);
+   cprintf("\nxxxxxxxxxxxx Old Metadata xxxxxxxxxxxx\n");
+   print_address_metadata((const void *)address);
+   update_permissions(address, mode, new_permissions);
+   cprintf("\nxxxxxxxxxxxx New Metadata xxxxxxxxxxxx\n");
+   print_address_metadata((const void *)address);	
+   return 0;
 }
 
 int dumpdata(int argc, char **argv, struct Trapframe *tf){

@@ -1,6 +1,5 @@
 #ifndef JOS_KERN_KDEBUG_H
 #define JOS_KERN_KDEBUG_H
-
 #include <inc/types.h>
 
 // Debug information about a particular instruction pointer
@@ -20,4 +19,6 @@ int debuginfo_eip(uintptr_t , struct Eipdebuginfo *);
 void print_range_data(uint32_t, uint32_t);
 void print_address_metadata(const void *);
 void print_permission(int , const char** , const uint8_t[], const uint8_t );
+void set_permissions(uint32_t, uint32_t);
+void update_permissions(uint32_t, uint32_t, uint32_t);
 #endif

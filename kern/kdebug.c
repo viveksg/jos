@@ -278,20 +278,51 @@ print_address_metadata(const void * va){
 
 void 
 print_permission(int perms, const char** perm_str, const uint8_t bit_info[], const uint8_t size){
-      uint8_t i = 0, bit_len = 0, bit = 0, j = 0;
-	  char  perm_data[4];
-	  char *perm_bits = perm_data;
-	  for(i = 0; i < size ; i++){
-           bit_len = bit_info[i];
-		   while(bit_len-- > 0){
+    uint8_t i = 0, bit_len = 0, bit = 0, j = 0;
+	char  perm_data[4];
+	char *perm_bits = perm_data;
+	for(i = 0; i < size ; i++){
+       bit_len = bit_info[i];
+	   perm_data[bit_len] = '\0';
+	   perm_bits = &perm_data[bit_len - 1];
+	       while(bit_len-- > 0){
               bit = perms & 1;
 			  perms = perms >> 1;
 			  *perm_bits = (('0') + bit);
-			  perm_bits++;
-		   }
-		   *perm_bits += '\0';
-		   perm_bits = perm_data;
-		   cprintf("%s %s\n", perm_str[i], perm_data);
-	  }
+			  perm_bits--;
+		}
+		*perm_bits += '\0';
+		perm_bits = perm_data;
+		cprintf("%s %s\n", perm_str[i], perm_data);
+	}
 
+}
+
+void 
+set_permissions(uint32_t address, uint32_t permission){
+	pte_t * pt_entry = pgdir_walk(kern_pgdir, (const void*)address, 0);
+	if(pt_entry)
+		*pt_entry = PTE_ADDR(*pt_entry) | permission;
+	else
+	    cprintf("No valid mapping found");
+       
+	
+}
+
+void
+update_permissions(uint32_t address, uint32_t mode, uint32_t permission){
+	switch (mode)
+	{
+	    case 1:
+		   set_permissions(address,0x000);
+		   break;
+	    case 2:
+	       set_permissions(address, 0xFFF);
+		   break;
+	    case 3:
+	       set_permissions(address,permission);
+		   break;
+        default:
+	       break;		 	
+	}
 }
