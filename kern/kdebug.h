@@ -21,4 +21,5 @@ void print_address_metadata(const void *);
 void print_permission(int , const char** , const uint8_t[], const uint8_t );
 void set_permissions(uint32_t, uint32_t);
 void update_permissions(uint32_t, uint32_t, uint32_t);
+void dump_data(uint32_t, uint32_t, bool);
 #endif

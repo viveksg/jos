@@ -291,7 +291,6 @@ print_permission(int perms, const char** perm_str, const uint8_t bit_info[], con
 			  *perm_bits = (('0') + bit);
 			  perm_bits--;
 		}
-		*perm_bits += '\0';
 		perm_bits = perm_data;
 		cprintf("%s %s\n", perm_str[i], perm_data);
 	}
@@ -325,4 +324,21 @@ update_permissions(uint32_t address, uint32_t mode, uint32_t permission){
         default:
 	       break;		 	
 	}
+}
+
+void
+dump_data(uint32_t start_addr, uint32_t end_addr, bool is_physical_address_range){
+	int i = 0; 
+	uintptr_t curr_addr = 0;
+	uint32_t *addr;
+	for(i = 0 ;i < end_addr - start_addr; i++){
+		curr_addr = start_addr + i;
+		addr =  is_physical_address_range ? (uint32_t*) KADDR(curr_addr) : (uint32_t*) curr_addr;
+		if(i%4 == 0)
+		{
+            cprintf("\n 0x%x: ", curr_addr);
+		}
+		cprintf(" 0x%x ",*addr);
+	} 
+	cprintf("\n");
 }
