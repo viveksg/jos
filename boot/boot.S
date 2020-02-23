@@ -8,6 +8,7 @@
 .set PROT_MODE_CSEG, 0x8         # kernel code segment selector
 .set PROT_MODE_DSEG, 0x10        # kernel data segment selector
 .set CR0_PE_ON,      0x1         # protected mode enable flag
+.set CR4_PSE_ON,     0x10        # page size extension flag 
 
 .globl start
 start:
@@ -63,7 +64,12 @@ protcseg:
   movw    %ax, %fs                # -> FS
   movw    %ax, %gs                # -> GS
   movw    %ax, %ss                # -> SS: Stack Segment
-  
+
+pagesizeext:
+  movl  %cr4, %eax
+  orl   $CR4_PSE_ON, %eax
+  movl  %eax, %cr4
+
   # Set up the stack pointer and call into C.
   movl    $start, %esp
   call bootmain
