@@ -193,7 +193,12 @@ mem_init(void)
 	// we just set up the mapping anyway.
 	// Permissions: kernel RW, user NONE
 	// Your code goes here:
-    boot_map_region(kern_pgdir, KERNBASE, 0xFFFFFFFF - KERNBASE, 0, PTE_W);
+	if(is_pgsize_extension_supported())
+        boot_map_region(kern_pgdir, KERNBASE, 0xFFFFFFFF - KERNBASE, 0, PTE_W|PTE_PS);
+	else
+        boot_map_region(kern_pgdir, KERNBASE, 0xFFFFFFFF - KERNBASE, 0, PTE_W);
+	    
+	
 	// Check that the initial page directory has been set up correctly.
 	check_kern_pgdir();
 
@@ -379,14 +384,24 @@ static void
 boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
 {
 	// Fill this function in
+	bool requires_extended_pgsize = (perm & PTE_PS);
 	uint32_t num_pages = size / PGSIZE ;
 	uint32_t i = 0, create = 1, vaddr_limit = va + size;
 	pte_t * pte;	
-	for(i = 0; i < num_pages && va < vaddr_limit; i++, va = va + PGSIZE, pa =pa + PGSIZE){
-           pte = pgdir_walk(pgdir, (char *)va , create);
-		   if(pte == NULL)
-		      panic("page allocation error");
-           *pte = pa|perm|PTE_P;
+	for(i = 0; i < num_pages && va < vaddr_limit; i++, va = va + PGSIZE, pa =pa + PGSIZE)
+	{
+           if(requires_extended_pgsize)
+		   {
+              pgdir[PDX(va)] = (pa & 0xFFC00000) | perm | PTE_P;
+		   }
+		   else
+		   {
+		      pte = pgdir_walk(pgdir, (char *)va , create);
+		      if(pte == NULL)
+		           panic("page allocation error");
+              *pte = pa|perm|PTE_P;	   
+		   }
+		   
 	}
 }
 
@@ -660,7 +675,8 @@ check_kern_pgdir(void)
 
 
 	// check phys mem
-	for (i = 0; i < npages * PGSIZE; i += PGSIZE)
+	uint32_t pg_size = is_pgsize_extension_supported()? EXT_PGSIZE_4Mb : PGSIZE;
+	for (i = 0; i < npages * PGSIZE; i += pg_size)
 		assert(check_va2pa(pgdir, KERNBASE + i) == i);
 
 	// check kernel stack
@@ -701,6 +717,8 @@ check_va2pa(pde_t *pgdir, uintptr_t va)
 	pgdir = &pgdir[PDX(va)];
 	if (!(*pgdir & PTE_P))
 		return ~0;
+	if(is_extended_mapping(*pgdir))
+	    return (PDX(*pgdir));
 	p = (pte_t*) KADDR(PTE_ADDR(*pgdir));
 	if (!(p[PTX(va)] & PTE_P))
 		return ~0;
@@ -901,4 +919,14 @@ check_page_installed_pgdir(void)
 	page_free(pp0);
 
 	cprintf("check_page_installed_pgdir() succeeded!\n");
+}
+
+bool
+is_pgsize_extension_supported(){
+	return (rcr4() & EXT_PGSIZE_4Mb);
+}
+
+bool
+is_extended_mapping(uintptr_t pde){	
+   return (is_pgsize_extension_supported() & (pde & PTE_PS));
 }
