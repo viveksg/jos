@@ -718,7 +718,7 @@ check_va2pa(pde_t *pgdir, uintptr_t va)
 	if (!(*pgdir & PTE_P))
 		return ~0;
 	if(is_extended_mapping(*pgdir))
-	    return (PDX(*pgdir));
+	    return (*pgdir & 0xFFFFE000);
 	p = (pte_t*) KADDR(PTE_ADDR(*pgdir));
 	if (!(p[PTX(va)] & PTE_P))
 		return ~0;
@@ -923,10 +923,10 @@ check_page_installed_pgdir(void)
 
 bool
 is_pgsize_extension_supported(){
-	return (rcr4() & EXT_PGSIZE_4Mb);
+	return (rcr4() & CR4_PSE);
 }
 
 bool
 is_extended_mapping(uintptr_t pde){	
-   return (is_pgsize_extension_supported() & (pde & PTE_PS));
+   return (is_pgsize_extension_supported() && (pde & PTE_PS));
 }

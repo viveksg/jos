@@ -238,26 +238,49 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 void
 print_range_data(uint32_t start_addr, uint32_t end_addr){
      uint32_t i = 0;
-	 for( i = start_addr ; i < end_addr; i += PGSIZE)
+	 const void * addr = NULL;
+	 for( i = start_addr ; i <= end_addr; i += PGSIZE)
 	 {
-	    print_address_metadata((const void *)i);
+		addr = (const void *)i;
+		if(is_extended_mapping(kern_pgdir[PDX(addr)]))
+		   print_address_metadata_extend(addr);
+		else   
+	       print_address_metadata(addr);
 		cprintf("--------------------------------------------------------------------------------");
-	 }
-	 print_address_metadata((const void *)i);	
+	 }	
 }
 
+void
+print_address_metadata_extend(const void * va)
+{
+   pde_t * pd_entry = &kern_pgdir[PDX(va)];
+   int permissions = *pd_entry & 0x1FFF;
+   cprintf("\nAddress = 0x%08x: base = 0x%08x\n", va, PDX(va));
+   if(pd_entry && (*pd_entry & PTE_P))
+   {
+       cprintf("Physical address: 0x%08x\n", (*pd_entry & 0xFFC00000)|(((uintptr_t) va & 0x004FFFFF)));
+	   cprintf("Page Directory entry permissions\n");
+	   print_permission(((*pd_entry) & 0xFFF), pde_four_mb_perms, pdte_four_mb_byte_info, pdte_four_mb_len);
+   }
+   else
+   {
+       cprintf("No page directory entry exists for this address\n");
+   }
+   
+}
 void 
-print_address_metadata(const void * va){
-	cprintf("\nAddress = 0x%x:\n", va);
+print_address_metadata(const void * va)
+{
+	cprintf("\nAddress = 0x%08x:\n", va);
 	pde_t * pt_base = &kern_pgdir[PDX(va)];
 	if(pt_base && (*pt_base & PTE_P))
 	{
-        cprintf("Page Table base = 0x%x ", *pt_base);
+        cprintf("Page Table base = 0x%08x ", *pt_base);
         pte_t * pt_entry = (pte_t*)KADDR(PTE_ADDR(*pt_base));
         pte_t * pt_data = &pt_entry[PTX(va)];
 		if(pt_data && (*pt_data & PTE_P))
 		{
-           cprintf("Page Address, Physical = 0x%x, Virtual = 0x%x, Permissions = 0x%x\n",PTE_ADDR(*pt_data), KADDR(PTE_ADDR(*pt_data)), ((*pt_data) & 0xFFF));
+           cprintf("Page Address, Physical = 0x%08x, Virtual = 0x%08x, Permissions = 0x%08x\n",PTE_ADDR(*pt_data), KADDR(PTE_ADDR(*pt_data)), ((*pt_data) & 0xFFF));
 		   cprintf("Page Directory entry permissions\n");
 		   print_permission(((*pt_base) & 0xFFF), pdte_four_kb_perms, pdte_four_kb_byte_info, pdte_four_kb_len);
 		   cprintf("\nPage Table entry permissions\n");
@@ -299,13 +322,20 @@ print_permission(int perms, const char** perm_str, const uint8_t bit_info[], con
 
 void 
 set_permissions(uint32_t address, uint32_t permission){
+	if(is_extended_mapping(address)){
+		pde_t *pd_entry = &kern_pgdir[PDX(address)];
+		if(pd_entry && (*pd_entry & PTE_P))
+		   kern_pgdir[PDX(address)] = (*pd_entry & 0xFFFFE000)| permission;
+		else
+		   cprintf("No valid mapping found");
+		return;   
+	}
+
 	pte_t * pt_entry = pgdir_walk(kern_pgdir, (const void*)address, 0);
 	if(pt_entry)
 		*pt_entry = PTE_ADDR(*pt_entry) | permission;
 	else
 	    cprintf("No valid mapping found");
-       
-	
 }
 
 void
@@ -336,9 +366,9 @@ dump_data(uint32_t start_addr, uint32_t end_addr, bool is_physical_address_range
 		addr =  is_physical_address_range ? (uint32_t*) KADDR(curr_addr) : (uint32_t*) curr_addr;
 		if(i%4 == 0)
 		{
-            cprintf("\n 0x%x: ", curr_addr);
+            cprintf("\n 0x%08x: ", curr_addr);
 		}
-		cprintf(" 0x%x ",*addr);
+		cprintf(" 0x%08x ",*addr);
 	} 
 	cprintf("\n");
 }

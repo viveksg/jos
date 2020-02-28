@@ -62,7 +62,7 @@ void	page_decref(struct PageInfo *pp);
 
 void	tlb_invalidate(pde_t *pgdir, void *va);
 bool is_pgsize_extension_supported();
-bool is_extended_mapping();
+bool is_extended_mapping(uintptr_t );
 static inline physaddr_t
 page2pa(struct PageInfo *pp)
 {
