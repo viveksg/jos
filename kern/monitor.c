@@ -32,7 +32,8 @@ static struct Command commands[] = {
 	{ "backtrace", "prints stack backtrace", mon_backtrace},
 	{ "showmappings", "prints address mappings for give range", showmappings},
 	{ "setperms", "sets permissions for give virtual address", setperms},
-	{ "dumpdata", "prints data and metadata for given virtual address range", dumpdata}
+	{ "dumpdata", "prints data and metadata for given virtual address range", dumpdata},
+	{ "dump_pgdir", "prints page directory (till index provided, 1024 MAX value)", dump_pgdir}
 };
 
 /***** Implementations of basic kernel monitor commands *****/
@@ -71,6 +72,12 @@ dumpdata(int argc, char **argv, struct Trapframe *tf){
    return 0;	
 }
 
+int dump_pgdir(int argc, char **argv, struct Trapframe *tf)
+{
+	uint32_t index_val = kern_atoi(argv[1]);
+    dump_page_directory(index_val);
+	return 0;
+}
 int 
 _test83(){
 	int x = 1, y = 32, z = 4;

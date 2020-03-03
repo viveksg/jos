@@ -372,3 +372,26 @@ dump_data(uint32_t start_addr, uint32_t end_addr, bool is_physical_address_range
 	} 
 	cprintf("\n");
 }
+
+void 
+dump_page_directory(uint32_t len)
+{
+	uint32_t i = 0;
+	pde_t pgdir_entry = 0; 
+	for(i = 0; i < len; i++)
+	{
+	    if(i % 4 == 0)
+		    cprintf("\n 0x%08x: ", i);
+		pgdir_entry = kern_pgdir[i];	
+		if(pgdir_entry & PTE_P)
+		{
+           if(pgdir_entry & PTE_PS)
+		      cprintf("0x%08x [E] ", pgdir_entry);
+		   else
+		      cprintf("0x%08x ",pgdir_entry);
+		}
+		else
+		   cprintf("0x%08x ", 0);		   		
+	}
+	cprintf("\n");
+}

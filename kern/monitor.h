@@ -18,6 +18,7 @@ int mon_backtrace(int argc, char **argv, struct Trapframe *tf);
 int showmappings(int argc, char **argv, struct Trapframe *tf);
 int setperms(int argc, char **argv, struct Trapframe *tf);
 int dumpdata(int argc, char **argv, struct Trapframe *tf);
+int dump_pgdir(int argc, char **argv, struct Trapframe *tf);
 int _test85();
 int _test83();
 int _test84();
