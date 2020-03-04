@@ -26,14 +26,12 @@ struct Command {
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
-	{ "test83", "runs code for lab1 exercise 8.3", _test83},
-	{ "test84", "runs code for lab1 exercise 8.3", _test84},
-	{ "test85", "runs code for lab1 exercise 8.3", _test85},
 	{ "backtrace", "prints stack backtrace", mon_backtrace},
 	{ "showmappings", "prints address mappings for give range", showmappings},
 	{ "setperms", "sets permissions for give virtual address", setperms},
 	{ "dumpdata", "prints data and metadata for given virtual address range", dumpdata},
-	{ "dump_pgdir", "prints page directory (till index provided, 1024 MAX value)", dump_pgdir}
+	{ "dump_pgdir", "prints page directory (till index provided, 1024 MAX value)", dump_pgdir},
+	{ "dump_pt", "prints page table for given virtual address (till index provided, 1024 MAX value)", dump_ptable}	
 };
 
 /***** Implementations of basic kernel monitor commands *****/
@@ -72,29 +70,20 @@ dumpdata(int argc, char **argv, struct Trapframe *tf){
    return 0;	
 }
 
-int dump_pgdir(int argc, char **argv, struct Trapframe *tf)
+int 
+dump_pgdir(int argc, char **argv, struct Trapframe *tf)
 {
 	uint32_t index_val = kern_atoi(argv[1]);
     dump_page_directory(index_val);
 	return 0;
 }
-int 
-_test83(){
-	int x = 1, y = 32, z = 4;
-    cprintf("x %d, y %x, z %d\n", x, y, z);
-	return 0;
-}
-
-int
-_test84(){
-	unsigned int i = 0x00646c72;
-    cprintf("H%x Wo%s\n", 57616, &i);
-	return 0;
-}
 
 int 
-_test85(){
-	cprintf("x=%d y=%d\n", 3);
+dump_ptable(int argc, char **argv, struct Trapframe *tf)
+{
+	uint32_t virtual_address = kern_atoi(argv[1]);
+	uint32_t index_val = kern_atoi(argv[2]);
+    dump_page_table(virtual_address, index_val);
 	return 0;
 }
 

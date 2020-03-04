@@ -24,4 +24,6 @@ void set_permissions(uint32_t, uint32_t);
 void update_permissions(uint32_t, uint32_t, uint32_t);
 void dump_data(uint32_t, uint32_t, bool);
 void dump_page_directory(uint32_t);
+void dump_page_table(uint32_t , uint32_t);
+pde_t* get_page_table_base(uintptr_t);
 #endif

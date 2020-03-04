@@ -386,7 +386,7 @@ dump_page_directory(uint32_t len)
 		if(pgdir_entry & PTE_P)
 		{
            if(pgdir_entry & PTE_PS)
-		      cprintf("0x%08x [E] ", pgdir_entry);
+		      cprintf("0x%08x [E] ", pgdir_entry); // extended page
 		   else
 		      cprintf("0x%08x ",pgdir_entry);
 		}
@@ -394,4 +394,36 @@ dump_page_directory(uint32_t len)
 		   cprintf("0x%08x ", 0);		   		
 	}
 	cprintf("\n");
+}
+
+void 
+dump_page_table(uint32_t va, uint32_t len)
+{
+	uint32_t i = 0;
+	pte_t pt_entry = 0;
+	pde_t * pt_base = get_page_table_base(va);
+
+	for(i = 0; i < len; i++)
+	{
+		if(i % 4 == 0)
+		  cprintf("\n 0x%08x: ", i);
+		pt_entry = pt_base[i];
+		if(pt_entry & PTE_P)
+		  cprintf("0x%08x ", pt_entry);
+		else
+		  cprintf("0x%08x ", 0);		    
+	}
+	cprintf("\n");
+
+}
+
+pde_t *
+get_page_table_base(uintptr_t va)
+{
+	if(is_extended_mapping(va))
+	   return NULL;
+	pde_t pd_entry = kern_pgdir[PDX(va)];
+	if(pd_entry & PTE_P)
+	   return KADDR(PTE_ADDR(pd_entry));
+	return NULL;
 }
