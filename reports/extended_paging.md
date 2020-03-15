@@ -1,4 +1,5 @@
 #### Page Size Extension:  
+<pre>
 Starting from Pentium processors, intel allowed to have page size to be 4 MB  
 in addition to choice of default 4KB pages. To enable page size extension  
 4th bit of CR4 register is to be set. 4 MB pages are not linked to a page table,  
@@ -19,23 +20,25 @@ This mapping can be done in 64 extended page directory entries.
 To enable extended page size, we first need to ensure that processor architecture
 Supports page size extension. And then 4th bit of CR4 register is enabled.
 In this kernel, when bootloader transits to 32 bit protected mode
-
-<code>
+</pre>
+```asm
 pagesizeext:  
   movl  %cr4, %eax  
   orl   $CR4_PSE_ON, %eax  
   movl  %eax, %cr4  
-</code>
+```
 
 Modifications in pmap.c:
-
+<pre>
 In boot_map_region mapping of kernel involves checking first about page size extension support  
 Through "is_pgsize_extension_supported()". Which checks if CR4 bit is set.  
 On true result, boot_map_region is called with PTE_PS permission bit set in permission variable.  
 The mapping loop in boot_map_region involves checking PTE_PS bit in every iteration  
 And if this bit is set, then extended page related entry is created in page directory,  
 Otherwise entry for corresponding to page table is created in page directory.  
-<code>
+</pre>
+
+```C
 static void  
 boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)  
 {  
@@ -60,6 +63,6 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 		   
 	}  
 }  
-</code>
+```
 
 
