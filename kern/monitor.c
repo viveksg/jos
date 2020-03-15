@@ -29,7 +29,7 @@ static struct Command commands[] = {
 	{ "backtrace", "prints stack backtrace", mon_backtrace},
 	{ "showmappings", "prints address mappings for give range", showmappings},
 	{ "setperms", "sets permissions for give virtual address", setperms},
-	{ "dumpdata", "prints data and metadata for given virtual address range", dumpdata},
+	{ "dumpdata", "prints data for given virtual/physical address range", dumpdata},
 	{ "dump_pgdir", "prints page directory (till index provided, 1024 MAX value)", dump_pgdir},
 	{ "dump_pt", "prints page table for given virtual address (till index provided, 1024 MAX value)", dump_ptable}	
 };

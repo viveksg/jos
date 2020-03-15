@@ -378,6 +378,7 @@ dump_page_directory(uint32_t len)
 {
 	uint32_t i = 0;
 	pde_t pgdir_entry = 0; 
+	len = len > 1024? 1024: len;
 	for(i = 0; i < len; i++)
 	{
 	    if(i % 4 == 0)
@@ -402,7 +403,7 @@ dump_page_table(uint32_t va, uint32_t len)
 	uint32_t i = 0;
 	pte_t pt_entry = 0;
 	pde_t * pt_base = get_page_table_base(va);
-
+    len = len > 1024? 1024: len;
 	for(i = 0; i < len; i++)
 	{
 		if(i % 4 == 0)
