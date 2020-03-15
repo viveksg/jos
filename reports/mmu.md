@@ -1,4 +1,5 @@
 #### Memory Allocation and Page management:  
+<pre>
 1. boot_alloc: This method allocates number of bytes (n), provided   
                In function argument and returns the address of next  
                Free byte, stored in nextfree, which is a **static** variable.  
@@ -36,19 +37,27 @@
               The page reinserted to beginning of page free list   
               Linked list.  
 
-
+</pre>
 #### Pointer Exercise    
-<code>
-    mystery_t x;
-	char* value = return_a_pointer();
-	*value = 10;
-	x = (mystery_t) value;
+<code>  
+	
+        mystery_t x;
+	
+	char* value = return_a_pointer();  
+	
+	*value = 10;  
+	
+	x = (mystery_t) value;  
+	
 </code>
+
+<pre>
 Each memory reference has to be processed through mmu   
 For dereferencing, and mmu input is virtual address  
 So type of **x** should be ** uintptr_t **    
-
+</pre>
 #### Page Table Management
+<pre>
 Index calculation logic:  
 JOS virtual memory system follows 2-level paging architecture.  
 The first level consists of page directory which can hold reference to 1024 pages.
@@ -107,46 +116,50 @@ c. Page Offset: Bits [11 - 0]
                   Once this is done, the 20 bit page is physical address of the page is computed  
                   And inserted in page table entry along with corresponding permissions.
 
-
+</pre>
 
 #### Mapped region info:
 
-1. UPAGE: 
+1. **UPAGE:**
+<pre>
 Start address           = KERNBASE(or KSTACKTOP) - 4xPTSIZE  
-                        = 0xF0000000 - 0x1000000  
+                        = 0xF0000000 - 0x1000000   
                         = 0xEF000000  
           
 Page Directory Index    = 0xEF000000 >> 22 = 0x3BC          
 
-End Address             = 0xEF000000 + 0x400000 - 0x1
-                        = 0xEF3FFFFF
-Page Directory Index    = 0xEF3FFFFF >> 22 = 0x3BD
-
-2. KSTACK: 
+End Address             = 0xEF000000 + 0x400000 - 0x1  
+                        = 0xEF3FFFFF  
+Page Directory Index    = 0xEF3FFFFF >> 22 = 0x3BD  
+</pre>
+2. **KSTACK:**
+<pre>
 Start address           = KSTACKTOP - KSTKSIZE  
                         = 0xF0000000 - 0x8000  
                         = 0xEFFF8000  
           
 Page Directory Index    = 0xEFFF8000 >> 22 = 0x3BF          
 
-End Address             = 0xEFFF8000 + 0x8000 - 0x1
-                        = 0xEFFFFFFF
-Page Directory Index    = 0xEFFFFFFF >> 22 = 0x3BF
-
-3. KERNEL: 
+End Address             = 0xEFFF8000 + 0x8000 - 0x1  
+                        = 0xEFFFFFFF  
+Page Directory Index    = 0xEFFFFFFF >> 22 = 0x3BF  
+</pre>
+3. **KERNEL:** 
+<pre>
 Start address           = KERNBASE   
                         = 0xF0000000  
                         = 0xF0000000  
           
 Page Directory Index    = 0xF0000000 >> 22 = 0x3C0          
 
-End Address             = 0xFFFFFFFF - 0x1000 - 0x1
-                        = 0xFFFEEEEE
-Page Directory Index    = 0xFFFEEEEE >> 22 = 0x3FF  
+End Address             = 0xFFFFFFFF - 0x1000 - 0x1  
+                        = 0xFFFEEEEE  
+Page Directory Index    = 0xFFFEEEEE >> 22 = 0x3FF    
 
-
+</pre>
 #### Page directory mappings  
 
+<pre>
 0 to 955 (0x3bb): No mappings all entries 0x00000000
 956 - 957 (0x3bc - 0x3bd): Page tables for UPAGES
 959 (0x3bf): Page tables for Kernel Stack
@@ -193,17 +206,19 @@ When extended page size is allowed, [E] denotes extended pages
  0x000003f4: 0x0d000083 [E] 0x0d400083 [E] 0x0d800083 [E] 0x0dc00083 [E]  
  0x000003f8: 0x0e000083 [E] 0x0e400083 [E] 0x0e800083 [E] 0x0ec00083 [E]  
  0x000003fc: 0x0f000083 [E] 0x0f400083 [E] 0x0f800083 [E] 0x0fc00083 [E] 
-
-#### Permission mechanism  
+</pre>
+#### Permission mechanism
+<pre>
 Last 12 bits of page directory or page table entry provides permissions.
 Bit 1 is read/write bit, if not set then page is read only, otherwise 
 Page is writable. Bit 2 is user/supervisor bit, if not set then page  
 Is assigned supervisor priveleges, otherwise page is assigned user priveleges.
 When kernel and user enironments are in same address space, combination of  
 These two bits are used to maintain desired privelege levels.
-
+</pre>
 
 #### Total Physical memory supported by JOS:  
+<pre>
 KERNBASE = 0xF0000000  
 MAX ADDRESS = 0xFFFFFFFF  
 Total virtual address space which is available for mapping = 0xFFFFFFFF - 0xF0000000 + 0x1    
@@ -212,14 +227,15 @@ Total virtual address space which is available for mapping = 0xFFFFFFFF - 0xF000
                                                            = 256 MB    
 So 256MB of virtual address space can be mapped to physical memory  
 Therefore JOS supports 256MB of physical memory
-
-#### Space Overhead  
+</pre>
+#### Space Overhead
+<pre>
 Page directory = 1024 x 4 = 4KB
 Page Tables = 1024 x 1024 x 4 = 4MB
 Total space overhead for memory management = 4100 KB
-
+</pre>
 #### EIP High Address (above kernbase) execution  
-
+<pre>
 As per kern/entry.S eip transition above kernbase occurs at "relocated" label.  
 File entrypgdir.c creates page directory with mapping of two regions
 [0, 4MB) and [KERNBASE, KERNBASE + 4MB). Both of these virtual address space  
@@ -227,7 +243,7 @@ Regions are mapped to physican region [0, 4MB). This allows execution of eip
 At low and high(above KERNBASE) addresses.  This transition is necessary
 Because low address mapping is just created to support initial bootloading,
 While rest of the kernel is supposed to be loaded above KERNBASE + 4MB.
-
+</pre>
 
 
 
