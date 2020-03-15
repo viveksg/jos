@@ -39,18 +39,12 @@
 
 </pre>
 #### Pointer Exercise    
-<code>  
-	
+```C
         mystery_t x;
-	
 	char* value = return_a_pointer();  
-	
 	*value = 10;  
-	
 	x = (mystery_t) value;  
-	
-</code>
-
+```
 <pre>
 Each memory reference has to be processed through mmu   
 For dereferencing, and mmu input is virtual address  
