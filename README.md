@@ -7,3 +7,5 @@ This repo is based on MIT 6.828 course  (2018, x86 based)
     a. [Page Directory and Page table management](reports/mmu.md)  
     b. [Extended Page Size](reports/extended_paging.md)  
     c. [Kernel Debug Methods](reports/kernel_debug.md)  
+3. Process Management:
+    a. [Enivronments](reports/environments.md)    
