@@ -49,7 +49,8 @@ const char *pde_four_mb_perms[] = {
 const uint8_t pdte_four_kb_byte_info[10] = {1,1,1,1,1,1,1,1,1,3};
 const uint8_t pdte_four_mb_byte_info[11] = {1,1,1,1,1,1,1,1,1,3,1};
 const uint8_t pdte_four_kb_len = 10;    
-const uint8_t pdte_four_mb_len = 11;      
+const uint8_t pdte_four_mb_len = 11; 
+const int32_t EFAULT = 0x6;     
 // stab_binsearch(stabs, region_left, region_right, type, addr)
 //
 //	Some stab types are arranged in increasing order by instruction
@@ -167,7 +168,9 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 		// __STABSTR_END__) in a structure located at virtual address
 		// USTABDATA.
 		const struct UserStabData *usd = (const struct UserStabData *) USTABDATA;
-
+        if(user_mem_check(curenv,usd, sizeof(struct UserStabData), PTE_U) == -EFAULT){
+			return  -1;
+		}
 		// Make sure this memory is valid.
 		// Return -1 if it is not.  Hint: Call user_mem_check.
 		// LAB 3: Your code here.
@@ -176,9 +179,13 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 		stab_end = usd->stab_end;
 		stabstr = usd->stabstr;
 		stabstr_end = usd->stabstr_end;
-
+        uint32_t stabstr_len = stabstr_end - stabstr;
 		// Make sure the STABS and string table memory is valid.
 		// LAB 3: Your code here.
+		if(user_mem_check(curenv, stabs, sizeof(struct Stab*), PTE_U) == -EFAULT ||
+		   user_mem_check(curenv, stabstr, stabstr_len, PTE_U) == -EFAULT){
+			   return -1;
+		   }
 	}
 
 	// String table validity checks

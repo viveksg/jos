@@ -182,12 +182,19 @@ trap_dispatch(struct Trapframe *tf)
 {
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
+	unsigned int cs_val = 0;
+	unsigned int permission = 0;
 	switch (tf->tf_trapno)
 	{
 	case 0x3:
 	     monitor(tf);
 		 break;
 	case 0xe:
+	     cs_val = tf->tf_cs;
+		 permission = cs_val & (0x3);
+		 if(permission == 0x0){
+			 panic("page_fault_handler: kernel page fault");
+		 }
 	     page_fault_handler(tf);
 	     break;
 	case 0x30:
