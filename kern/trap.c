@@ -61,49 +61,7 @@ static const char *trapname(int trapno)
 
 void
 trap_init(void)
-{
-	extern struct Segdesc gdt[];
-
-	extern void HANDLER_DE_ERROR();          /* Divide Error */
-    extern void HANDLER_DB_ERROR();          /* Reserved */
-    extern void HANDLER_NMI();               /* Non maskable Interrupt */
-    extern void HANDLER_BP_TRAP();           /* Breakpoint */
-    extern void HANDLER_OF_TRAP();           /* Overflow */
-    extern void HANDLER_BR_ERROR();          /* Bound Range Exceeded */
-    extern void HANDLER_UD_ERROR();          /* Invalid Opcode */ 
-    extern void HANDLER_NM_ERROR();          /* Device not available, no math processor */
-    extern void HANDLER_DF_ABORT();          /* Double Fault */
-    extern void HANDLER_TS_ERROR();          /* Invalid TSS*/
-    extern void HANDLER_NP_ERROR();          /* Segment Not Present */
-    extern void HANDLER_SS_ERROR();          /* Stack Segment fault */
-    extern void HANDLER_GP_ERROR();          /* General Protection */
-    extern void HANDLER_PF();                /* Page Fault */
-    extern void HANDLER_MF_ERROR();          /* Floating point Error Math Fault */
-    extern void HANDLER_AC_ERROR();          /* Alignment Check */
-    extern void HANDLER_MC_ABORT();          /* Machine Check */
-    extern void HANDLER_XF_ERROR();     
-    extern void HANDLER_SYSCALL();           /*SYSCALL*/
-
-	SETGATE(idt[T_DIVIDE], TYPE_EXCEPTION, GD_KT, &HANDLER_DE_ERROR, PRIVILEGE_KERNEL);
-	SETGATE(idt[T_DEBUG], TYPE_EXCEPTION, GD_KT, &HANDLER_DB_ERROR, PRIVILEGE_KERNEL);
-	SETGATE(idt[T_NMI], TYPE_INTERRUPT, GD_KT, &HANDLER_NMI, PRIVILEGE_KERNEL);
-	SETGATE(idt[T_BRKPT], TYPE_EXCEPTION, GD_KT, &HANDLER_BP_TRAP, PRIVELEGE_USER);
-	SETGATE(idt[T_OFLOW], TYPE_EXCEPTION, GD_KT, &HANDLER_OF_TRAP, PRIVILEGE_KERNEL);
-	SETGATE(idt[T_BOUND], TYPE_EXCEPTION, GD_KT, &HANDLER_BR_ERROR, PRIVILEGE_KERNEL);
-	SETGATE(idt[T_ILLOP], TYPE_EXCEPTION, GD_KT, &HANDLER_UD_ERROR, PRIVILEGE_KERNEL);
-	SETGATE(idt[T_DEVICE], TYPE_EXCEPTION, GD_KT, &HANDLER_NM_ERROR, PRIVILEGE_KERNEL);
-	SETGATE(idt[T_DBLFLT], TYPE_EXCEPTION, GD_KT, &HANDLER_DF_ABORT, PRIVILEGE_KERNEL);
-	SETGATE(idt[T_TSS], TYPE_EXCEPTION, GD_KT, &HANDLER_TS_ERROR, PRIVILEGE_KERNEL);
-	SETGATE(idt[T_SEGNP], TYPE_EXCEPTION, GD_KT, &HANDLER_NP_ERROR, PRIVILEGE_KERNEL);
-	SETGATE(idt[T_STACK], TYPE_EXCEPTION, GD_KT, &HANDLER_SS_ERROR, PRIVILEGE_KERNEL);
-	SETGATE(idt[T_GPFLT], TYPE_EXCEPTION, GD_KT, &HANDLER_GP_ERROR, PRIVILEGE_KERNEL);
-	SETGATE(idt[T_PGFLT], TYPE_EXCEPTION, GD_KT, &HANDLER_PF, PRIVILEGE_KERNEL);
-	SETGATE(idt[T_FPERR], TYPE_EXCEPTION, GD_KT, &HANDLER_MF_ERROR, PRIVILEGE_KERNEL);
-	SETGATE(idt[T_ALIGN], TYPE_EXCEPTION, GD_KT, &HANDLER_AC_ERROR, PRIVILEGE_KERNEL);
-	SETGATE(idt[T_MCHK], TYPE_EXCEPTION, GD_KT, &HANDLER_MC_ABORT, PRIVILEGE_KERNEL);
-	SETGATE(idt[T_SIMDERR], TYPE_EXCEPTION, GD_KT, &HANDLER_XF_ERROR, PRIVILEGE_KERNEL);
-	SETGATE(idt[T_SYSCALL], TYPE_INTERRUPT, GD_KT, &HANDLER_SYSCALL, PRIVELEGE_USER);
-	
+{  
 	// Per-CPU setup 
 	trap_init_percpu();
 }
