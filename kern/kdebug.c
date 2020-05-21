@@ -2,7 +2,8 @@
 #include <inc/string.h>
 #include <inc/memlayout.h>
 #include <inc/assert.h>
-
+#include <inc/mmu.h>
+#include <kern/pmap.h>
 #include <kern/kdebug.h>
 #include <kern/pmap.h>
 #include <kern/env.h>
@@ -19,7 +20,37 @@ struct UserStabData {
 	const char *stabstr_end;
 };
 
+const char *pdte_four_kb_perms[] = {
+                               "Present: ",
+                               "Read/Write: ",
+                               "User/Supervison: ",
+                               "Write-Through: ",
+                               "Cache Disabled: ",
+                               "Accessed: ",
+                               "Dirty: ",
+                               "Page Table Attribute Index: ",
+                               "Global Page: ",
+                               "Available: "
+                               };
 
+const char *pde_four_mb_perms[] = {
+                               "Present: ",
+                               "Read/Write: ",
+                               "User/Supervison: ",
+                               "Write-Through: ",
+                               "Cache Disabled: ",
+                               "Accessed: ",
+                               "Dirty: ",
+                               "Page Size (1 indicates 4 MBytes) : ",
+                               "Global Page: ",
+                               "Available: ",
+                               "Page table attribute index"
+                               };
+const uint8_t pdte_four_kb_byte_info[10] = {1,1,1,1,1,1,1,1,1,3};
+const uint8_t pdte_four_mb_byte_info[11] = {1,1,1,1,1,1,1,1,1,3,1};
+const uint8_t pdte_four_kb_len = 10;    
+const uint8_t pdte_four_mb_len = 11; 
+const int32_t EFAULT = 0x6;     
 // stab_binsearch(stabs, region_left, region_right, type, addr)
 //
 //	Some stab types are arranged in increasing order by instruction
@@ -116,7 +147,6 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 	const struct Stab *stabs, *stab_end;
 	const char *stabstr, *stabstr_end;
 	int lfile, rfile, lfun, rfun, lline, rline;
-
 	// Initialize *info
 	info->eip_file = "<unknown>";
 	info->eip_line = 0;
@@ -138,7 +168,9 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 		// __STABSTR_END__) in a structure located at virtual address
 		// USTABDATA.
 		const struct UserStabData *usd = (const struct UserStabData *) USTABDATA;
-
+        if(user_mem_check(curenv,usd, sizeof(struct UserStabData), PTE_U) == -EFAULT){
+			return  -1;
+		}
 		// Make sure this memory is valid.
 		// Return -1 if it is not.  Hint: Call user_mem_check.
 		// LAB 3: Your code here.
@@ -147,9 +179,13 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 		stab_end = usd->stab_end;
 		stabstr = usd->stabstr;
 		stabstr_end = usd->stabstr_end;
-
+        uint32_t stabstr_len = stabstr_end - stabstr;
 		// Make sure the STABS and string table memory is valid.
 		// LAB 3: Your code here.
+		if(user_mem_check(curenv, stabs, sizeof(struct Stab*), PTE_U) == -EFAULT ||
+		   user_mem_check(curenv, stabstr, stabstr_len, PTE_U) == -EFAULT){
+			   return -1;
+		   }
 	}
 
 	// String table validity checks
@@ -204,8 +240,10 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 	//	Look at the STABS documentation and <inc/stab.h> to find
 	//	which one.
 	// Your code here.
-
-
+    stab_binsearch(stabs, &lline, &rline, N_SLINE, addr);
+	if(lline > rline)
+	    return -1;	 
+    info->eip_line = stabs[lline].n_desc;
 	// Search backwards from the line number for the relevant filename
 	// stab.
 	// We can't just use the "lfile" stab because inlined functions
@@ -218,7 +256,6 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 	if (lline >= lfile && stabs[lline].n_strx < stabstr_end - stabstr)
 		info->eip_file = stabstr + stabs[lline].n_strx;
 
-
 	// Set eip_fn_narg to the number of arguments taken by the function,
 	// or 0 if there was no containing function.
 	if (lfun < rfun)
@@ -228,4 +265,198 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 			info->eip_fn_narg++;
 
 	return 0;
+}
+
+void
+print_range_data(uint32_t start_addr, uint32_t end_addr){
+     uint32_t i = 0;
+	 const void * addr = NULL;
+	 for( i = start_addr ; i <= end_addr; i += PGSIZE)
+	 {
+		addr = (const void *)i;
+		if(is_extended_mapping(kern_pgdir[PDX(addr)]))
+		   print_address_metadata_extend(addr);
+		else   
+	       print_address_metadata(addr);
+		cprintf("--------------------------------------------------------------------------------");
+	 }	
+}
+
+void
+print_address_metadata_extend(const void * va)
+{
+   pde_t * pd_entry = &kern_pgdir[PDX(va)];
+   int permissions = *pd_entry & 0x1FFF;
+   cprintf("\nAddress = 0x%08x: base = 0x%08x\n", va, PDX(va));
+   if(pd_entry && (*pd_entry & PTE_P))
+   {
+       cprintf("Physical address: 0x%08x\n", (*pd_entry & 0xFFC00000)|(((uintptr_t) va & 0x004FFFFF)));
+	   cprintf("Page Directory entry permissions\n");
+	   print_permission(((*pd_entry) & 0xFFF), pde_four_mb_perms, pdte_four_mb_byte_info, pdte_four_mb_len);
+   }
+   else
+   {
+       cprintf("No page directory entry exists for this address\n");
+   }
+   
+}
+void 
+print_address_metadata(const void * va)
+{
+	cprintf("\nAddress = 0x%08x:\n", va);
+	pde_t * pt_base = &kern_pgdir[PDX(va)];
+	if(pt_base && (*pt_base & PTE_P))
+	{
+        cprintf("Page Table base = 0x%08x ", *pt_base);
+        pte_t * pt_entry = (pte_t*)KADDR(PTE_ADDR(*pt_base));
+        pte_t * pt_data = &pt_entry[PTX(va)];
+		if(pt_data && (*pt_data & PTE_P))
+		{
+           cprintf("Page Address, Physical = 0x%08x, Virtual = 0x%08x, Permissions = 0x%08x\n",PTE_ADDR(*pt_data), KADDR(PTE_ADDR(*pt_data)), ((*pt_data) & 0xFFF));
+		   cprintf("Page Directory entry permissions\n");
+		   print_permission(((*pt_base) & 0xFFF), pdte_four_kb_perms, pdte_four_kb_byte_info, pdte_four_kb_len);
+		   cprintf("\nPage Table entry permissions\n");
+		   print_permission(((*pt_data) & 0xFFF), pdte_four_kb_perms, pdte_four_kb_byte_info, pdte_four_kb_len);
+		}
+		else
+		{
+	       cprintf("No valid page table entry present\n");
+		}
+		
+	}	    
+	else
+	{
+        cprintf("No page directory entry exists for this address\n");
+	}
+	
+}
+
+void 
+print_permission(int perms, const char** perm_str, const uint8_t bit_info[], const uint8_t size){
+    uint8_t i = 0, bit_len = 0, bit = 0, j = 0;
+	char  perm_data[4];
+	char *perm_bits = perm_data;
+	for(i = 0; i < size ; i++){
+       bit_len = bit_info[i];
+	   perm_data[bit_len] = '\0';
+	   perm_bits = &perm_data[bit_len - 1];
+	       while(bit_len-- > 0){
+              bit = perms & 1;
+			  perms = perms >> 1;
+			  *perm_bits = (('0') + bit);
+			  perm_bits--;
+		}
+		perm_bits = perm_data;
+		cprintf("%s %s\n", perm_str[i], perm_data);
+	}
+
+}
+
+void 
+set_permissions(uint32_t address, uint32_t permission){
+	if(is_extended_mapping(address)){
+		pde_t *pd_entry = &kern_pgdir[PDX(address)];
+		if(pd_entry && (*pd_entry & PTE_P))
+		   kern_pgdir[PDX(address)] = (*pd_entry & 0xFFFFE000)| permission;
+		else
+		   cprintf("No valid mapping found");
+		return;   
+	}
+
+	pte_t * pt_entry = pgdir_walk(kern_pgdir, (const void*)address, 0);
+	if(pt_entry)
+		*pt_entry = PTE_ADDR(*pt_entry) | permission;
+	else
+	    cprintf("No valid mapping found");
+}
+
+void
+update_permissions(uint32_t address, uint32_t mode, uint32_t permission){
+	switch (mode)
+	{
+	    case 1:
+		   set_permissions(address,0x000);
+		   break;
+	    case 2:
+	       set_permissions(address, 0xFFF);
+		   break;
+	    case 3:
+	       set_permissions(address,permission);
+		   break;
+        default:
+	       break;		 	
+	}
+}
+
+void
+dump_data(uint32_t start_addr, uint32_t end_addr, bool is_physical_address_range){
+	int i = 0; 
+	uintptr_t curr_addr = 0;
+	uint32_t *addr;
+	for(i = 0 ;i < end_addr - start_addr; i++){
+		curr_addr = start_addr + i;
+		addr =  is_physical_address_range ? (uint32_t*) KADDR(curr_addr) : (uint32_t*) curr_addr;
+		if(i%4 == 0)
+		{
+            cprintf("\n 0x%08x: ", curr_addr);
+		}
+		cprintf(" 0x%08x ",*addr);
+	} 
+	cprintf("\n");
+}
+
+void 
+dump_page_directory(uint32_t len)
+{
+	uint32_t i = 0;
+	pde_t pgdir_entry = 0; 
+	len = len > 1024? 1024: len;
+	for(i = 0; i < len; i++)
+	{
+	    if(i % 4 == 0)
+		    cprintf("\n 0x%08x: ", i);
+		pgdir_entry = kern_pgdir[i];	
+		if(pgdir_entry & PTE_P)
+		{
+           if(pgdir_entry & PTE_PS)
+		      cprintf("0x%08x [E] ", pgdir_entry); // extended page
+		   else
+		      cprintf("0x%08x ",pgdir_entry);
+		}
+		else
+		   cprintf("0x%08x ", 0);		   		
+	}
+	cprintf("\n");
+}
+
+void 
+dump_page_table(uint32_t va, uint32_t len)
+{
+	uint32_t i = 0;
+	pte_t pt_entry = 0;
+	pde_t * pt_base = get_page_table_base(va);
+    len = len > 1024? 1024: len;
+	for(i = 0; i < len; i++)
+	{
+		if(i % 4 == 0)
+		  cprintf("\n 0x%08x: ", i);
+		pt_entry = pt_base[i];
+		if(pt_entry & PTE_P)
+		  cprintf("0x%08x ", pt_entry);
+		else
+		  cprintf("0x%08x ", 0);		    
+	}
+	cprintf("\n");
+
+}
+
+pde_t *
+get_page_table_base(uintptr_t va)
+{
+	if(is_extended_mapping(va))
+	   return NULL;
+	pde_t pd_entry = kern_pgdir[PDX(va)];
+	if(pd_entry & PTE_P)
+	   return KADDR(PTE_ADDR(pd_entry));
+	return NULL;
 }

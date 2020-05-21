@@ -68,6 +68,9 @@ void *	mmio_map_region(physaddr_t pa, size_t size);
 int	user_mem_check(struct Env *env, const void *va, size_t len, int perm);
 void	user_mem_assert(struct Env *env, const void *va, size_t len, int perm);
 
+bool is_pgsize_extension_supported();
+bool is_extended_mapping(uintptr_t );
+
 static inline physaddr_t
 page2pa(struct PageInfo *pp)
 {

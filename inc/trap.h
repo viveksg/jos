@@ -39,6 +39,10 @@
 #define IRQ_IDE         14
 #define IRQ_ERROR       19
 
+#define TYPE_INTERRUPT  0
+#define TYPE_EXCEPTION  1
+#define PRIVILEGE_KERNEL 0
+#define PRIVELEGE_USER 3
 #ifndef __ASSEMBLER__
 
 #include <inc/types.h>

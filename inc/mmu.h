@@ -28,7 +28,6 @@
 
 // page number field of address
 #define PGNUM(la)	(((uintptr_t) (la)) >> PTXSHIFT)
-
 // page directory index
 #define PDX(la)		((((uintptr_t) (la)) >> PDXSHIFT) & 0x3FF)
 
@@ -46,6 +45,7 @@
 #define NPTENTRIES	1024		// page table entries per page table
 
 #define PGSIZE		4096		// bytes mapped by a page
+#define EXT_PGSIZE_4Mb  0x400000
 #define PGSHIFT		12		// log2(PGSIZE)
 
 #define PTSIZE		(PGSIZE*NPTENTRIES) // bytes mapped by a page directory entry
@@ -64,6 +64,11 @@
 #define PTE_D		0x040	// Dirty
 #define PTE_PS		0x080	// Page Size
 #define PTE_G		0x100	// Global
+
+// pgdir_walk flags
+#define CREATE_PAGE  0x1
+#define DO_NOT_CREATE_PAGE  0x0
+#define CR4_PGSIZE_EXTENSION_4MB  0x10
 
 // The PTE_AVAIL bits aren't used by the kernel or interpreted by the
 // hardware, so user processes are allowed to set them arbitrarily.
