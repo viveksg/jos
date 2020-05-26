@@ -70,7 +70,9 @@ protcseg:
   movw    %ax, %fs                # -> FS
   movw    %ax, %gs                # -> GS
   movw    %ax, %ss                # -> SS: Stack Segment
-
+  
+  pushl %edx
+  movl %esp, %edx
 cpuid_support_check:
   pushfw 
   movl (%esp), %eax;
@@ -110,6 +112,8 @@ pagesizeext:
 
 bootmain_call:
   # Set up the stack pointer and call into C.
+  movl %edx, %esp
+  popl %edx
   movl    $start, %esp
   call bootmain
 

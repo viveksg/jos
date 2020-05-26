@@ -202,9 +202,9 @@ mem_init(void)
 	// Initialize the SMP-related parts of the memory map
 	mem_init_mp();
 
-    //if(is_pgsize_extension_supported())
-      //  boot_map_region(kern_pgdir, KERNBASE, 0xFFFFFFFF - KERNBASE, 0, PTE_W|PTE_PS);
-	//else
+     if(is_pgsize_extension_supported())
+        boot_map_region(kern_pgdir, KERNBASE, 0xFFFFFFFF - KERNBASE, 0, PTE_W|PTE_PS);
+	 else
         boot_map_region(kern_pgdir, KERNBASE, 0xFFFFFFFF - KERNBASE, 0, PTE_W);
 	    
 	
