@@ -51,7 +51,11 @@ i386_init(void)
 	ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
 	// Touch all you want.
-	ENV_CREATE(user_primes, ENV_TYPE_USER);
+    uint32_t i = 0;
+	for(i = 0; i < 16; i++){
+	    ENV_CREATE(user_yield, ENV_TYPE_USER);
+	}
+	//ENV_CREATE(user_primes, ENV_TYPE_USER);
 #endif // TEST*
 
 	// Schedule and run the first user environment!
@@ -115,8 +119,6 @@ mp_main(void)
 	// Your code here:
     lock_kernel();
 	sched_yield();
-	// Remove this after you finish Exercise 6
-	for (;;);
 }
 
 /*
