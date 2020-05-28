@@ -52,10 +52,11 @@ i386_init(void)
 #else
 	// Touch all you want.
     uint32_t i = 0;
-	for(i = 0; i < 16; i++){
+	/*for(i = 0; i < 16; i++){
 	    ENV_CREATE(user_yield, ENV_TYPE_USER);
-	}
+	}*/
 	//ENV_CREATE(user_primes, ENV_TYPE_USER);
+	ENV_CREATE(user_dumbfork, ENV_TYPE_USER);
 #endif // TEST*
 
 	// Schedule and run the first user environment!

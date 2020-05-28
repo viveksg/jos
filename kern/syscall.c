@@ -22,7 +22,7 @@ sys_cputs(const char *s, size_t len)
 	// Destroy the environment if not.
 
 	user_mem_assert(curenv, s, len, PTE_U);
-	
+
 	// Print the string supplied by the user.
 	cprintf("%.*s", len, s);
 }
@@ -83,8 +83,18 @@ sys_exofork(void)
 	// from the current environment -- but tweaked so sys_exofork
 	// will appear to return 0.
 
-	// LAB 4: Your code here.
-	panic("sys_exofork not implemented");
+	struct Env *new_env = NULL;
+	envid_t envid = curenv->env_id;
+	uint32_t env_alloc_status = env_alloc(&new_env, envid);
+	if (env_alloc_status == 0)
+	{
+		new_env->env_status = ENV_NOT_RUNNABLE;
+		new_env->env_tf = curenv->env_tf;
+		new_env->env_tf.tf_regs.reg_eax = 0;
+		return new_env->env_id;
+	}
+	
+	return env_alloc_status;
 }
 
 // Set envid's env_status to status, which must be ENV_RUNNABLE
@@ -97,14 +107,18 @@ sys_exofork(void)
 static int
 sys_env_set_status(envid_t envid, int status)
 {
-	// Hint: Use the 'envid2env' function from kern/env.c to translate an
-	// envid to a struct Env.
-	// You should set envid2env's third argument to 1, which will
-	// check whether the current environment has permission to set
-	// envid's status.
-
-	// LAB 4: Your code here.
-	panic("sys_env_set_status not implemented");
+	if (status != ENV_RUNNABLE && status != ENV_NOT_RUNNABLE)
+	{
+		return -E_INVAL;
+	}
+	struct Env *candidate_env = NULL;
+	int op_status = envid2env(envid, &candidate_env, 0x1);
+	if (op_status)
+	{
+		return op_status;
+	}
+	candidate_env->env_status = status;
+	return 0;
 }
 
 // Set the page fault upcall for 'envid' by modifying the corresponding struct
@@ -141,15 +155,31 @@ sys_env_set_pgfault_upcall(envid_t envid, void *func)
 static int
 sys_page_alloc(envid_t envid, void *va, int perm)
 {
-	// Hint: This function is a wrapper around page_alloc() and
-	//   page_insert() from kern/pmap.c.
-	//   Most of the new code you write should be to check the
-	//   parameters for correctness.
-	//   If page_insert() fails, remember to free the page you
-	//   allocated!
+	struct Env *candidate_env = NULL;
+	int env_status = envid2env(envid, &candidate_env, 0x1);
+	uint32_t inverted_psyscall = ~PTE_SYSCALL;
+	if (env_status)
+	{
+		return env_status;
+	}
+	if ((!utop_validate(va))||(inverted_psyscall & perm))
+	{
+		return -E_INVAL;
+	}
 
-	// LAB 4: Your code here.
-	panic("sys_page_alloc not implemented");
+	struct PageInfo *pinfo = page_alloc(ALLOC_ZERO);
+	if (pinfo != NULL)
+	{
+		uint32_t insert_status = page_insert(candidate_env->env_pgdir, pinfo, va, perm);
+		if (insert_status)
+		{
+			page_free(pinfo);
+			return insert_status;
+		}
+		return 0;
+	}
+	page_free(pinfo);
+	return -E_NO_MEM;
 }
 
 // Map the page of memory at 'srcva' in srcenvid's address space
@@ -170,17 +200,42 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 //	-E_NO_MEM if there's no memory to allocate any necessary page tables.
 static int
 sys_page_map(envid_t srcenvid, void *srcva,
-	     envid_t dstenvid, void *dstva, int perm)
+			 envid_t dstenvid, void *dstva, int perm)
 {
-	// Hint: This function is a wrapper around page_lookup() and
-	//   page_insert() from kern/pmap.c.
-	//   Again, most of the new code you write should be to check the
-	//   parameters for correctness.
-	//   Use the third argument to page_lookup() to
-	//   check the current permissions on the page.
+	struct Env *src_env = NULL;
+	struct Env *dst_env = NULL;
+	uint32_t src_va_int = (uint32_t) srcva;
+	uint32_t dst_va_int = (uint32_t) dstva;
+	int src_status = envid2env(srcenvid, &src_env, 0x1);
+	int dst_status = envid2env(dstenvid, &dst_env, 0x1);
+	if (src_status || dst_status)
+	{
+		return src_status|dst_status;
+	}
+	if((!utop_validate(srcva)) || (!utop_validate(dstva)))
+	{
+		return -E_INVAL;
+	}
+    pte_t *src_pte = NULL;
+	pte_t *dst_pte = NULL;
+	struct PageInfo* src_pinfo = page_lookup(src_env->env_pgdir, srcva, &src_pte);
+	uint32_t src_perms = (*src_pte & 0xFFF);
+	if(src_pte == NULL || (perm & (~PTE_SYSCALL))
+     	||((perm & PTE_W) && (!(src_perms & PTE_W))))
+	{
+		return -E_INVAL;
+	}
+	if(page_insert(dst_env->env_pgdir, src_pinfo, dstva, perm)){
+		return -E_NO_MEM;
+	}
+	return 0;
+	
+}
 
-	// LAB 4: Your code here.
-	panic("sys_page_map not implemented");
+bool utop_validate(void * va)
+{
+    uint32_t va_int = (uint32_t)va;
+	return (va_int < UTOP && (!PGOFF(va_int)));
 }
 
 // Unmap the page of memory at 'va' in the address space of 'envid'.
@@ -194,9 +249,18 @@ static int
 sys_page_unmap(envid_t envid, void *va)
 {
 	// Hint: This function is a wrapper around page_remove().
-
-	// LAB 4: Your code here.
-	panic("sys_page_unmap not implemented");
+    struct Env* env_store;
+	int env_status = envid2env(envid, &env_store, 0x1);
+	if(env_status)
+	{
+       return env_status;
+	}
+	if(!utop_validate(va))
+	{
+		return -E_INVAL;
+	}
+	page_remove(env_store->env_pgdir, va);
+	return 0;
 }
 
 // Try to send 'value' to the target env 'envid'.
@@ -271,22 +335,32 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 	// Return any appropriate return value.
 	// LAB 3: Your code here.
 
-	switch (syscallno) {
-	   case SYS_cputs:
-	        sys_cputs((const char*)a1, a2);
-			break;
-	   case SYS_cgetc:
-	        return sys_cgetc();
-       case SYS_getenvid:
-	        return sys_getenvid();
-	   case SYS_env_destroy:
-	        return sys_env_destroy((envid_t)a1);
-	   case SYS_yield:
-	        sched_yield();
-			break;			
-	   default:
-		   return -E_INVAL;
+	switch (syscallno)
+	{
+	case SYS_cputs:
+		sys_cputs((const char *)a1, a2);
+		break;
+	case SYS_cgetc:
+		return sys_cgetc();
+	case SYS_getenvid:
+		return sys_getenvid();
+	case SYS_env_destroy:
+		return sys_env_destroy((envid_t)a1);
+	case SYS_yield:
+		sched_yield();
+		break;
+	case SYS_exofork:
+		return sys_exofork();
+	case SYS_env_set_status:
+		return sys_env_set_status(a1, a2);
+	case SYS_page_alloc : 
+	    return sys_page_alloc(a1, (void *)a2, a3);
+	case SYS_page_map:
+		return sys_page_map(a1, (void*)a2, a3, (void*)a4, a5);
+	case SYS_page_unmap:
+		return sys_page_unmap(a1, (void*)a2);
+	default:
+		return -E_INVAL;
 	}
 	return 0;
 }
-

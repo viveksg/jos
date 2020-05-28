@@ -47,9 +47,9 @@ sched_yield(void)
 	{
 		env_run(candidate_environment);
 	}
-	else if(current_environment != NULL && candidate_environment->env_status == ENV_RUNNING)
+	else if(current_environment != NULL && current_environment->env_status == ENV_RUNNING)
 	{
-        env_run(candidate_environment);
+        env_run(current_environment);
 	}
 	// sched_halt never returns
 	    sched_halt();
