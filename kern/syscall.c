@@ -93,7 +93,7 @@ sys_exofork(void)
 		new_env->env_tf.tf_regs.reg_eax = 0;
 		return new_env->env_id;
 	}
-	
+
 	return env_alloc_status;
 }
 
@@ -132,8 +132,14 @@ sys_env_set_status(envid_t envid, int status)
 static int
 sys_env_set_pgfault_upcall(envid_t envid, void *func)
 {
-	// LAB 4: Your code here.
-	panic("sys_env_set_pgfault_upcall not implemented");
+	struct Env *env = NULL;
+	int env_status = envid2env(envid, &env, 0x1);
+	if (env_status)
+	{
+		return env_status;
+	}
+	env->env_pgfault_upcall = func;
+	return 0;
 }
 
 // Allocate a page of memory and map it at 'va' with permission
@@ -162,7 +168,7 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 	{
 		return env_status;
 	}
-	if ((!utop_validate(va))||(inverted_psyscall & perm))
+	if ((!utop_validate(va)) || (inverted_psyscall & perm))
 	{
 		return -E_INVAL;
 	}
@@ -204,37 +210,36 @@ sys_page_map(envid_t srcenvid, void *srcva,
 {
 	struct Env *src_env = NULL;
 	struct Env *dst_env = NULL;
-	uint32_t src_va_int = (uint32_t) srcva;
-	uint32_t dst_va_int = (uint32_t) dstva;
+	uint32_t src_va_int = (uint32_t)srcva;
+	uint32_t dst_va_int = (uint32_t)dstva;
 	int src_status = envid2env(srcenvid, &src_env, 0x1);
 	int dst_status = envid2env(dstenvid, &dst_env, 0x1);
 	if (src_status || dst_status)
 	{
-		return src_status|dst_status;
+		return src_status | dst_status;
 	}
-	if((!utop_validate(srcva)) || (!utop_validate(dstva)))
+	if ((!utop_validate(srcva)) || (!utop_validate(dstva)))
 	{
 		return -E_INVAL;
 	}
-    pte_t *src_pte = NULL;
+	pte_t *src_pte = NULL;
 	pte_t *dst_pte = NULL;
-	struct PageInfo* src_pinfo = page_lookup(src_env->env_pgdir, srcva, &src_pte);
+	struct PageInfo *src_pinfo = page_lookup(src_env->env_pgdir, srcva, &src_pte);
 	uint32_t src_perms = (*src_pte & 0xFFF);
-	if(src_pte == NULL || (perm & (~PTE_SYSCALL))
-     	||((perm & PTE_W) && (!(src_perms & PTE_W))))
+	if (src_pte == NULL || (perm & (~PTE_SYSCALL)) || ((perm & PTE_W) && (!(src_perms & PTE_W))))
 	{
 		return -E_INVAL;
 	}
-	if(page_insert(dst_env->env_pgdir, src_pinfo, dstva, perm)){
+	if (page_insert(dst_env->env_pgdir, src_pinfo, dstva, perm))
+	{
 		return -E_NO_MEM;
 	}
 	return 0;
-	
 }
 
-bool utop_validate(void * va)
+bool utop_validate(void *va)
 {
-    uint32_t va_int = (uint32_t)va;
+	uint32_t va_int = (uint32_t)va;
 	return (va_int < UTOP && (!PGOFF(va_int)));
 }
 
@@ -249,13 +254,13 @@ static int
 sys_page_unmap(envid_t envid, void *va)
 {
 	// Hint: This function is a wrapper around page_remove().
-    struct Env* env_store;
+	struct Env *env_store;
 	int env_status = envid2env(envid, &env_store, 0x1);
-	if(env_status)
+	if (env_status)
 	{
-       return env_status;
+		return env_status;
 	}
-	if(!utop_validate(va))
+	if (!utop_validate(va))
 	{
 		return -E_INVAL;
 	}
@@ -353,12 +358,14 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		return sys_exofork();
 	case SYS_env_set_status:
 		return sys_env_set_status(a1, a2);
-	case SYS_page_alloc : 
-	    return sys_page_alloc(a1, (void *)a2, a3);
+	case SYS_page_alloc:
+		return sys_page_alloc(a1, (void *)a2, a3);
 	case SYS_page_map:
-		return sys_page_map(a1, (void*)a2, a3, (void*)a4, a5);
+		return sys_page_map(a1, (void *)a2, a3, (void *)a4, a5);
 	case SYS_page_unmap:
-		return sys_page_unmap(a1, (void*)a2);
+		return sys_page_unmap(a1, (void *)a2);
+	case SYS_env_set_pgfault_upcall:
+		return sys_env_set_pgfault_upcall(a1, (void *)a2);
 	default:
 		return -E_INVAL;
 	}

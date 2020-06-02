@@ -65,8 +65,8 @@ static const char *trapname(int trapno)
 
 void trap_init(void)
 
-{   
-    // generate idt from trapentry.S CREATE_IDT() function 
+{
+	// generate idt from trapentry.S CREATE_IDT() function
 	CREATE_IDT();
 	// Per-CPU setup
 	trap_init_percpu();
@@ -99,16 +99,16 @@ void trap_init_percpu(void)
 	// user space on that CPU.
 	//
 	// LAB 4: Your code here:
-    uint32_t curr_cpu_id = thiscpu->cpu_id;
+	uint32_t curr_cpu_id = thiscpu->cpu_id;
 	// Setup a TSS so that we get the right stack
 	// when we trap to the kernel.
-	thiscpu->cpu_ts.ts_esp0 = (uintptr_t) percpu_kstacks[thiscpu->cpu_id] + KSTKSIZE;
+	thiscpu->cpu_ts.ts_esp0 = (uintptr_t)percpu_kstacks[thiscpu->cpu_id] + KSTKSIZE;
 	thiscpu->cpu_ts.ts_ss0 = GD_KD;
 	thiscpu->cpu_ts.ts_iomb = sizeof(struct Taskstate);
 
 	// Initialize the TSS slot of the gdt.
 	gdt[(GD_TSS0 >> 3) + curr_cpu_id] = SEG16(STS_T32A, (uint32_t)(&thiscpu->cpu_ts),
-							  sizeof(struct Taskstate) - 1, 0);
+											  sizeof(struct Taskstate) - 1, 0);
 	gdt[(GD_TSS0 >> 3) + curr_cpu_id].sd_s = 0;
 
 	// Load the TSS selector (like other segment selectors, the
@@ -170,7 +170,8 @@ trap_dispatch(struct Trapframe *tf)
 	// Handle spurious interrupts
 	// The hardware sometimes raises these because of noise on the
 	// IRQ line or other reasons. We don't care.
-	if (tf->tf_trapno == IRQ_OFFSET + IRQ_SPURIOUS) {
+	if (tf->tf_trapno == IRQ_OFFSET + IRQ_SPURIOUS)
+	{
 		cprintf("Spurious interrupt on irq 7\n");
 		print_trapframe(tf);
 		return;
@@ -238,7 +239,6 @@ void trap(struct Trapframe *tf)
 	// the interrupt path.
 	assert(!(read_eflags() & FL_IF));
 
-
 	if ((tf->tf_cs & 3) == 3)
 	{
 		// Trapped from user mode.
@@ -249,7 +249,8 @@ void trap(struct Trapframe *tf)
 		assert(curenv);
 
 		// Garbage collect if current enviroment is a zombie
-		if (curenv->env_status == ENV_DYING) {
+		if (curenv->env_status == ENV_DYING)
+		{
 			env_free(curenv);
 			curenv = NULL;
 			sched_yield();
@@ -282,7 +283,6 @@ void trap(struct Trapframe *tf)
 void page_fault_handler(struct Trapframe *tf)
 {
 	uint32_t fault_va;
-
 	// Read processor's CR2 register to find the faulting address
 	fault_va = rcr2();
 	// Call the environment's page fault upcall, if one exists.  Set up a
@@ -313,8 +313,36 @@ void page_fault_handler(struct Trapframe *tf)
 	//   user_mem_assert() and env_run() are useful here.
 	//   To change what the user environment runs, modify 'curenv->env_tf'
 	//   (the 'tf' variable points at 'curenv->env_tf').
+	struct UTrapframe *utrapframe = NULL;
+	uint32_t *scratch_ptr = NULL;
 
-	// LAB 4: Your code here.
+	if (curenv->env_pgfault_upcall)
+	{  
+		uint32_t scratch_space_offset = 0;
+		if ((tf->tf_esp >= UXSTACKTOP - PGSIZE) && (tf->tf_esp < UXSTACKTOP))
+		{
+			scratch_ptr = (uint32_t *)(tf->tf_esp - 4);
+			*scratch_ptr = 0;
+			utrapframe = (struct UTrapframe *)(tf->tf_esp - 4 - sizeof(struct UTrapframe));
+		}
+		else
+		{
+            utrapframe = (struct UTrapframe *)(UXSTACKTOP - sizeof(struct UTrapframe));
+		}
+		
+		user_mem_assert(curenv, (void *)utrapframe, sizeof(struct UTrapframe), PTE_W|PTE_U);
+
+		utrapframe->utf_fault_va = fault_va;
+		utrapframe->utf_err = tf->tf_err;
+		utrapframe->utf_regs = tf->tf_regs;
+		utrapframe->utf_eip = tf->tf_eip;
+		utrapframe->utf_eflags = tf->tf_eflags;
+		utrapframe->utf_esp = tf->tf_esp;
+		
+		tf->tf_esp = (uint32_t)utrapframe;
+		tf->tf_eip = (uint32_t)curenv->env_pgfault_upcall;
+		env_run(curenv);
+	}
 
 	// Destroy the environment that caused the fault.
 	cprintf("[%08x] user fault va %08x ip %08x\n",
