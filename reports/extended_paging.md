@@ -1,6 +1,6 @@
 #### Page Size Extension:  
 <pre>
-Starting from Pentium processors, intel allowed to have page size to be 4 MB  
+Starting from Pentium processors, Intel allowed to have page size to be 4 MB  
 in addition to choice of default 4KB pages. To enable page size extension  
 4th bit of CR4 register is to be set. 4 MB pages are not linked to a page table,  
 4MB pages are directly linked via page directory entry. 
@@ -12,14 +12,15 @@ The page directory can have default page adirectory entries pointing to page
 Tables and entries pointing to 4MB pages. The extended page pointing page directory
 Entries have 7th (0-indexed) LSB set.  
 
-JOS kernel is from 0xF0000000 to 0xFFFFFFFF. Under default Paging mechanis  
+JOS kernel is from 0xF0000000 to 0xFFFFFFFF. Under default Paging mechanism  
 This requires 256/4 = 64MB space just to maintain kernel page tables,
 While with extended paging enabled, 
 This mapping can be done in 64 extended page directory entries.
 
 To enable extended page size, we first need to ensure that processor architecture
-Supports page size extension. And then 4th bit of CR4 register is enabled.
+Supports page size extension. And then 4th bit of CR4 register is enabled
 In this kernel, when bootloader transits to 32 bit protected mode.  
+
 CR4 bit was introduced in Pentium processors, so if we can detect the processor  
 Model is greater than or equal to pentium model, then we can proceed with  
 Page size extenstion logic.
