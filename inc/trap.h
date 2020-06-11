@@ -39,8 +39,26 @@
 #define IRQ_IDE         14
 #define IRQ_ERROR       19
 
-#define TYPE_INTERRUPT  0
-#define TYPE_EXCEPTION  1
+#define IRQ_0 (IRQ_OFFSET + IRQ_TIMER)
+#define IRQ_1 (IRQ_OFFSET + IRQ_KBD)
+#define IRQ_2 (IRQ_OFFSET + 2)
+#define IRQ_3 (IRQ_OFFSET + 3)
+#define IRQ_4 (IRQ_OFFSET + IRQ_SERIAL)
+#define IRQ_5 (IRQ_OFFSET + 5)
+#define IRQ_6 (IRQ_OFFSET + 6)
+#define IRQ_7 (IRQ_OFFSET + IRQ_SPURIOUS)
+#define IRQ_8 (IRQ_OFFSET + 8)
+#define IRQ_9 (IRQ_OFFSET + 9)
+#define IRQ_10 (IRQ_OFFSET + 10)
+#define IRQ_11 (IRQ_OFFSET + 11)
+#define IRQ_12 (IRQ_OFFSET + 12)
+#define IRQ_13 (IRQ_OFFSET + 14)
+#define IRQ_14 (IRQ_OFFSET + IRQ_IDE)
+#define IRQ_19 (IRQ_OFFSET + IRQ_ERROR)
+
+#define TYPE_INTR 0
+#define TYPE_ABORT 1
+
 #define PRIVILEGE_KERNEL 0
 #define PRIVELEGE_USER 3
 #ifndef __ASSEMBLER__

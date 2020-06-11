@@ -52,7 +52,6 @@ sys_env_destroy(envid_t envid)
 {
 	int r;
 	struct Env *e;
-
 	if ((r = envid2env(envid, &e, 1)) < 0)
 		return r;
 	if (e == curenv)

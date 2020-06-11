@@ -28,12 +28,12 @@ sched_yield(void)
 
     struct Env *current_environment = curenv;
 	struct Env *candidate_environment = NULL;
-	uint32_t current_index = -1;
+	int current_index = -1;
 	if(current_environment != NULL && current_environment->env_status == ENV_RUNNING){
 		 current_index = ENVX(current_environment->env_id);
 	} 
-	uint32_t end_index = current_index + NENV -1;
-	uint32_t i = 0;
+	int end_index = current_index + NENV;
+	int i = 0;
 	for(i = current_index + 1; i < end_index; i++)
 	{
 		candidate_environment = &envs[i % NENV];
@@ -42,7 +42,6 @@ sched_yield(void)
 			break;
 		}
 	}
-	
 	if(i != end_index)
 	{
 		env_run(candidate_environment);
@@ -96,7 +95,7 @@ sched_halt(void)
 		"pushl $0\n"
 		"pushl $0\n"
 		// Uncomment the following line after completing exercise 13
-		//"sti\n"
+		"sti\n"
 		"1:\n"
 		"hlt\n"
 		"jmp 1b\n"
