@@ -28,7 +28,7 @@ pgfault(struct UTrapframe *utf)
 	envid_t envid = sys_getenvid();
 	void *target_addr = (void *)(ROUNDDOWN(addr, PGSIZE));
 	if ((err & FEC_WR) != FEC_WR || (pte & (PTE_COW)) != PTE_COW)
-	{
+	{   
 		panic("pgfault: access not write or page not COW");
 	}
 

@@ -28,15 +28,16 @@ sched_yield(void)
 
     struct Env *current_environment = curenv;
 	struct Env *candidate_environment = NULL;
-	int current_index = -1;
+	uint32_t i = 0, start_index = 0;
+	uint32_t mod_val = NENV - 1;
+	
 	if(current_environment != NULL && current_environment->env_status == ENV_RUNNING){
-		 current_index = ENVX(current_environment->env_id);
-	} 
-	int end_index = current_index + NENV;
-	int i = 0;
-	for(i = current_index + 1; i < end_index; i++)
+		 start_index = ENVX(current_environment->env_id) + 1;	
+	}  
+	uint32_t end_index = start_index + NENV;
+	for(i = start_index; i < end_index; i++)
 	{
-		candidate_environment = &envs[i % NENV];
+		candidate_environment = &envs[i & mod_val];
 		if(candidate_environment->env_status == ENV_RUNNABLE)
 		{
 			break;

@@ -211,8 +211,6 @@ sys_page_map(envid_t srcenvid, void *srcva,
 	struct Env *dst_env = NULL;
 	uint32_t src_va_int = (uint32_t)srcva;
 	uint32_t dst_va_int = (uint32_t)dstva;
-
-		cprintf("%x, %x \n",srcva, dstva);
 	int src_status = envid2env(srcenvid, &src_env, 0x1);
 	int dst_status = envid2env(dstenvid, &dst_env, 0x1);
 	if (src_status || dst_status)
@@ -227,7 +225,10 @@ sys_page_map(envid_t srcenvid, void *srcva,
 	pte_t *dst_pte = NULL;
 	struct PageInfo *src_pinfo = page_lookup(src_env->env_pgdir, srcva, &src_pte);
 	uint32_t src_perms = (*src_pte & 0xFFF);
-	if (src_pte == NULL || (perm & (~PTE_SYSCALL)) || ((perm & PTE_W) && (!(src_perms & PTE_W))))
+	uint32_t enval = (src_pte == NULL) ;
+	enval |= (perm & (~PTE_SYSCALL));
+	enval |= ((perm & PTE_W) && (!(src_perms & PTE_W)));
+	if (enval)
 	{
 		return -E_INVAL;
 	}
@@ -241,7 +242,7 @@ sys_page_map(envid_t srcenvid, void *srcva,
 bool utop_validate(void *va)
 {
 	uint32_t va_int = (uint32_t)va;
-	return (va_int < UTOP && (!PGOFF(va_int)));
+	return (va_int < UTOP && (PGOFF(va) == 0));
 }
 
 // Unmap the page of memory at 'va' in the address space of 'envid'.
@@ -324,12 +325,22 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	}	
 
 	if((uint32_t)srcva < UTOP)
-	{ 
-		
-	    if((status = sys_page_map(curenv->env_id, srcva, envid, env->env_ipc_dstva, perm)))
-	    {
-		    return status;
-	    }
+	{   
+		pte_t *pte = NULL;
+		struct PageInfo* pp = page_lookup(curenv->env_pgdir, srcva, &pte);
+		uint32_t page_perms = (*pte & 0xFFF);
+	    enval = PGOFF(srcva);
+		enval |= (perm & inverted_psyscall);
+	    enval |= (pp == NULL);
+		enval |= ((*pte & PTE_W) && (!(perm & PTE_W)));
+		if(enval)
+		{
+			return -E_INVAL;
+		}		
+        if((status = page_insert(env->env_pgdir, pp, env->env_ipc_dstva, perm)))
+		{
+            return status;
+		}
 
         env->env_ipc_perm = perm;
 	}
@@ -359,13 +370,13 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 static int
 sys_ipc_recv(void *dstva)
 {
-	if(utop_validate(dstva))
+	if((uint32_t)dstva < UTOP && PGOFF(dstva) != 0)
 	{
 		return -E_INVAL;
 	}
+	curenv->env_ipc_recving = 1;
 	curenv->env_ipc_dstva = dstva;
     curenv->env_status = ENV_NOT_RUNNABLE;
-	curenv->env_ipc_recving = 1;
 	return 0;
 }
 

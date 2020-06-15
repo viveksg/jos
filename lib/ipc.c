@@ -27,8 +27,8 @@ ipc_recv(envid_t *from_env_store, void *pg, int *perm_store)
 	{
 		pg = (void *)UTOP;
 	}
-	status = sys_ipc_recv(pg);
-	if(status)
+
+	if((status = sys_ipc_recv(pg)))
 	{
 		if(from_env_store != NULL)
 		    *from_env_store = 0;
