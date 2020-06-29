@@ -137,13 +137,13 @@ fork(void)
 	uint32_t uxperms = (PTE_P | PTE_U | PTE_W);
 	r = sys_page_alloc(envid, (void *)(UXSTACKTOP - PGSIZE), uxperms) |
 		sys_env_set_pgfault_upcall(envid, _pgfault_upcall) |
-		sys_env_set_status(envid, ENV_RUNNABLE);
+		sys_env_set_status(envid, ENV_RUNNABLE) |
+		sys_init_queue(envid);
 
 	if (r)
 	{
 		panic("fork %e", r);
 	}
-
 	return envid;
 }
 

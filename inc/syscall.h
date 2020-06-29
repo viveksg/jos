@@ -16,6 +16,9 @@ enum {
 	SYS_yield,
 	SYS_ipc_try_send,
 	SYS_ipc_recv,
+	SYS_check_recv_status,
+	SYS_enqueue_ipc_req,
+	SYS_init_queue,
 	NSYSCALLS
 };
 

@@ -11,7 +11,8 @@
 #include <kern/syscall.h>
 #include <kern/console.h>
 #include <kern/sched.h>
-
+#include <kern/ipc_helper.h>
+#include <kern/spinlock.h>
 // Print a string to the system console.
 // The string is exactly 'len' characters long.
 // Destroys the environment on memory errors.
@@ -90,6 +91,8 @@ sys_exofork(void)
 		new_env->env_status = ENV_NOT_RUNNABLE;
 		new_env->env_tf = curenv->env_tf;
 		new_env->env_tf.tf_regs.reg_eax = 0;
+		new_env->qfront = FRONT_DEFAULT;
+		new_env->qrear = REAR_DEFAULT;
 		return new_env->env_id;
 	}
 
@@ -320,10 +323,10 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	    return status;
     }
 	if(!env->env_ipc_recving)
-	{
+	{  
 		return -E_IPC_NOT_RECV;
 	}	
-
+    //cprintf("hello....\n");
 	if((uint32_t)srcva < UTOP)
 	{   
 		pte_t *pte = NULL;
@@ -374,12 +377,77 @@ sys_ipc_recv(void *dstva)
 	{
 		return -E_INVAL;
 	}
+	envid_t sender_process = 0;
+	int status = 0;
+	struct Env* src_env = NULL;
+	if(dequeue_process(&sender_process, curenv->env_id) == 0){
+		//cprintf("\nreceived process: %x\n", sender_process);
+		if(sender_process != 0)
+		    status = envid2env(sender_process, &src_env, 0);
+	}
 	curenv->env_ipc_recving = 1;
 	curenv->env_ipc_dstva = dstva;
     curenv->env_status = ENV_NOT_RUNNABLE;
+ 	if(src_env){
+		src_env->env_status = ENV_RUNNABLE;
+	}
 	return 0;
 }
 
+static int
+sys_check_recv_status(envid_t recv_proc)
+{   
+
+   	struct  Env* env = NULL;
+	int enval = 0;
+	int status = envid2env(recv_proc, &env, 0);
+	uint32_t inverted_psyscall = ~PTE_SYSCALL;
+    if(status)
+	{
+	    return status;
+    }
+	
+	if(!env->env_ipc_recving)
+	{  
+		return -E_IPC_NOT_RECV;
+	}	
+	return 0;
+}
+
+static int
+sys_enqueue_ipc_req(envid_t recv_proc)
+{  
+    struct  Env* env = NULL;
+	int status = envid2env(recv_proc, &env, 0);
+    if(status)
+	{
+	    return status;
+    }
+	//lock_kernel();	
+	while((status = enqueue_process(curenv->env_id, env->env_id)));
+	//if((status = enqueue_process(curenv->env_id, env->env_id)))
+	//{
+	//	return status;
+//	}
+    //unlock_kernel();
+	env->env_status = ENV_RUNNABLE;
+	curenv->env_status = ENV_NOT_RUNNABLE;
+	return 0;
+}
+static int
+sys_init_queue(envid_t envid)
+{   
+	struct Env* env = NULL;
+	int status = 0;
+	if((status = envid2env(envid, &env, 0)))
+	{
+		return status;
+	}
+	env->qfront = FRONT_DEFAULT;
+	env->qrear = REAR_DEFAULT;
+	env->qlock.locked = 0;
+	return 0;
+}
 // Dispatches to the correct kernel function, passing the arguments.
 int32_t
 syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, uint32_t a5)
@@ -417,7 +485,13 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 	case SYS_ipc_recv:
 	    return sys_ipc_recv((void *) a1);
 	case SYS_ipc_try_send:
-	    return sys_ipc_try_send(a1, a2, (void *)a3, a4);		
+	    return sys_ipc_try_send(a1, a2, (void *)a3, a4);	
+	case SYS_check_recv_status:
+	    return sys_check_recv_status(a1);
+	case SYS_enqueue_ipc_req:
+	    return sys_enqueue_ipc_req(a1);		
+	case SYS_init_queue:
+	    return sys_init_queue(a1);		
 	default:
 		return -E_INVAL;
 	}

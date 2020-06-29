@@ -111,3 +111,20 @@ sys_ipc_recv(void *dstva)
 	return syscall(SYS_ipc_recv, 1, (uint32_t)dstva, 0, 0, 0, 0);
 }
 
+int
+sys_check_recv_status(envid_t env_dst)
+{
+	return syscall(SYS_check_recv_status, 1, env_dst, 0, 0, 0, 0);
+}
+
+int
+sys_enqueue_ipc_req(envid_t env_dst)
+{
+	return syscall(SYS_enqueue_ipc_req, 1, env_dst, 0, 0, 0, 0);
+}
+
+int
+sys_init_queue(envid_t env_dst)
+{
+	return syscall(SYS_init_queue, 1, env_dst, 0, 0, 0, 0);
+}

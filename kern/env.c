@@ -232,6 +232,8 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 	e->env_type = ENV_TYPE_USER;
 	e->env_status = ENV_RUNNABLE;
 	e->env_runs = 0;
+	e->qfront = 0;
+	e->qrear = -1;
 
 	// Clear out all the saved register state,
 	// to prevent the register values
@@ -491,7 +493,7 @@ env_pop_tf(struct Trapframe *tf)
 {
 	// Record the CPU we are running on for user-space debugging
 	curenv->env_cpunum = cpunum();
-
+   // cprintf("\n[%x] new instr: %x\n",curenv->env_id, tf->tf_eip );
 	asm volatile(
 		"\tmovl %0,%%esp\n"
 		"\tpopal\n"
