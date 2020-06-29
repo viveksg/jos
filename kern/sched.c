@@ -28,7 +28,7 @@ void sched_yield(void)
 	struct Env *current_environment = curenv;
 	uint32_t i = 0, j = 0, start_index = 0;
 	uint32_t mod_val = NENV - 1;
-
+    //cprintf("\nsched: \n");
 	if (current_environment != NULL)
 	{
 		start_index = ENVX(current_environment->env_id) + 1;
@@ -38,12 +38,13 @@ void sched_yield(void)
 	{
 		j = i & mod_val;
 		if (envs[j].env_status == ENV_RUNNABLE)
-		{
+		{  // cprintf("[%x] [%x]\n", envs[j].env_id, envs[j].env_status);
 			env_run(&envs[j]);
 		}
 	}
 	if (current_environment != NULL && current_environment->env_status == ENV_RUNNING)
-	{
+	{   
+		//cprintf("[%x] [%x]\n",current_environment->env_id, current_environment->env_status);
 		env_run(current_environment);
 	}
 	// sched_halt never returns

@@ -6,7 +6,8 @@
 #include <inc/types.h>
 #include <inc/trap.h>
 #include <inc/memlayout.h>
-#include <kern/spinlock.h>
+#include <kern/queue.h>
+
 typedef int32_t envid_t;
 
 // An environment ID 'envid_t' has three parts:
@@ -28,12 +29,6 @@ typedef int32_t envid_t;
 #define LOG2NENV		10
 #define NENV			(1 << LOG2NENV)
 #define ENVX(envid)		((envid) & (NENV - 1))
-#define IPC_QUEUE_SIZE 0x10;
-#define ERR_QUEUE_FULL 0x14;
-#define ERR_QUEUE_EMPTY 0x15;
-#define INSERT_SUCCESSFUL 0x0;
-#define FRONT_DEFAULT 0x0;
-#define REAR_DEFAULT 0xffffffff;
 // Values of env_status in struct Env
 enum {
 	ENV_FREE = 0,
@@ -70,10 +65,7 @@ struct Env {
 	uint32_t env_ipc_value;		// Data value sent to us
 	envid_t env_ipc_from;		// envid of the sender
 	int env_ipc_perm;		    // Perm of page mapping received
-	envid_t queue[16];          // pending ipc envid circular queue
-	int qfront;            // queue front
-	int qrear;             // queue rear
-	struct spinlock qlock;
+    queue que;
 };
 
 #endif // !JOS_INC_ENV_H

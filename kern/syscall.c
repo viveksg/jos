@@ -11,7 +11,7 @@
 #include <kern/syscall.h>
 #include <kern/console.h>
 #include <kern/sched.h>
-#include <kern/ipc_helper.h>
+#include <kern/queue.h>
 #include <kern/spinlock.h>
 // Print a string to the system console.
 // The string is exactly 'len' characters long.
@@ -91,8 +91,7 @@ sys_exofork(void)
 		new_env->env_status = ENV_NOT_RUNNABLE;
 		new_env->env_tf = curenv->env_tf;
 		new_env->env_tf.tf_regs.reg_eax = 0;
-		new_env->qfront = FRONT_DEFAULT;
-		new_env->qrear = REAR_DEFAULT;
+		init_queue(&new_env->que);
 		return new_env->env_id;
 	}
 
@@ -379,8 +378,10 @@ sys_ipc_recv(void *dstva)
 	}
 	envid_t sender_process = 0;
 	int status = 0;
+	int  rec_value = 0;
 	struct Env* src_env = NULL;
-	if(dequeue_process(&sender_process, curenv->env_id) == 0){
+	if(dequeue(&curenv->que, &rec_value) == 0){
+		sender_process = (envid_t)rec_value;
 		//cprintf("\nreceived process: %x\n", sender_process);
 		if(sender_process != 0)
 		    status = envid2env(sender_process, &src_env, 0);
@@ -418,22 +419,17 @@ static int
 sys_enqueue_ipc_req(envid_t recv_proc)
 {  
     struct  Env* env = NULL;
-	int status = envid2env(recv_proc, &env, 0);
+	int status = envid2env(recv_proc, &env, 0); int i = 0;
     if(status)
 	{
 	    return status;
     }
-	//lock_kernel();	
-	while((status = enqueue_process(curenv->env_id, env->env_id)));
-	//if((status = enqueue_process(curenv->env_id, env->env_id)))
-	//{
-	//	return status;
-//	}
-    //unlock_kernel();
+	while((status = enqueue(&env->que, curenv->env_id)));
 	env->env_status = ENV_RUNNABLE;
 	curenv->env_status = ENV_NOT_RUNNABLE;
 	return 0;
 }
+
 static int
 sys_init_queue(envid_t envid)
 {   
@@ -443,9 +439,7 @@ sys_init_queue(envid_t envid)
 	{
 		return status;
 	}
-	env->qfront = FRONT_DEFAULT;
-	env->qrear = REAR_DEFAULT;
-	env->qlock.locked = 0;
+	init_queue(&(env->que));
 	return 0;
 }
 // Dispatches to the correct kernel function, passing the arguments.
