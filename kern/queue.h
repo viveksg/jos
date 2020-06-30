@@ -7,7 +7,7 @@
 #define ERR_QUEUE_EMPTY 0x15
 #define OP_SUCCESSFUL 0x0
 #define FRONT_DEFAULT 0x0
-#define REAR_DEFAULT 0xffffffff
+#define REAR_DEFAULT 0x0
 
 typedef struct{
     int queue[QUEUE_SIZE];

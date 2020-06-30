@@ -14,25 +14,25 @@
 #include <kern/queue.h>
 
 int enqueue(queue* que, int value)
-{
-    if(que->qfront == que->qrear)
+{   
+    if((que->qrear + 1)%que->qsize == que->qfront)
     {   
         return -ERR_QUEUE_FULL;
     }
-    que->queue[que->qfront] = value;
-    que->qfront = (que->qfront + 1) % que->qsize;
+    que->queue[que->qrear] = value;
+    que->qrear= (que->qrear + 1) % que->qsize;
     return OP_SUCCESSFUL;
 }
 
 int dequeue(queue* que, int * value)
 {
-    if(que->qrear > -1 && (que->qrear == que->qfront))
+    if((que->qrear == que->qfront))
     {
         return -ERR_QUEUE_EMPTY;
     }
-    que->qrear = (que->qrear + 1) % que->qsize;
-    *value = que->queue[que->qrear];
-    que->queue[que->qrear] = -1;
+    *value = que->queue[que->qfront];
+    que->queue[que->qfront] = -1;
+    que->qfront = (que->qfront + 1)%que->qsize;
     return OP_SUCCESSFUL;   
 } 
 
