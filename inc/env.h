@@ -6,7 +6,7 @@
 #include <inc/types.h>
 #include <inc/trap.h>
 #include <inc/memlayout.h>
-
+#include <inc/queue.h>
 typedef int32_t envid_t;
 
 // An environment ID 'envid_t' has three parts:
@@ -28,7 +28,6 @@ typedef int32_t envid_t;
 #define LOG2NENV		10
 #define NENV			(1 << LOG2NENV)
 #define ENVX(envid)		((envid) & (NENV - 1))
-
 // Values of env_status in struct Env
 enum {
 	ENV_FREE = 0,
@@ -42,6 +41,16 @@ enum {
 enum EnvType {
 	ENV_TYPE_USER = 0,
 };
+typedef struct{
+	envid_t envs[QUEUE_SIZE];
+	int front;
+	int rear;
+} queue;
+
+typedef struct{
+    queue blocked_process;
+	uint32_t value;
+} semaphore;
 
 struct Env {
 	struct Trapframe env_tf;	// Saved registers
@@ -65,6 +74,13 @@ struct Env {
 	uint32_t env_ipc_value;		// Data value sent to us
 	envid_t env_ipc_from;		// envid of the sender
 	int env_ipc_perm;		// Perm of page mapping received
+
+	// non iterative ipc
+	queue ipc_queue;
+	semaphore full;
+	semaphore empty;
+	semaphore mutex;
+
 };
 
 #endif // !JOS_INC_ENV_H
