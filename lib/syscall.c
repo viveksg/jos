@@ -116,3 +116,15 @@ sys_ipc_check_recv(envid_t envid)
 {
 	return syscall(SYS_ipc_check_recv, 1, envid, 0, 0, 0, 0);
 }
+
+int 
+sys_ipc_enqueue_env(envid_t envid)
+{
+	return syscall(SYS_ipc_enqueue_env, 1, envid, 0, 0, 0, 0);
+}
+
+int 
+sys_ipc_dequeue_env(envid_t envid)
+{
+	return syscall(SYS_ipc_dequeue_env, 1, 0, 0, 0, 0, 0);
+}

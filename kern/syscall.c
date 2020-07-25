@@ -11,7 +11,8 @@
 #include <kern/syscall.h>
 #include <kern/console.h>
 #include <kern/sched.h>
-
+#include <kern/semaphore.h>
+#include <kern/queue.h>
 // Print a string to the system console.
 // The string is exactly 'len' characters long.
 // Destroys the environment on memory errors.
@@ -391,6 +392,60 @@ sys_check_recv_status(envid_t envid)
 	}
 	return env->env_ipc_recving;
 }
+
+static int
+sys_ipc_enqueue_env(envid_t envid)
+{
+	struct Env* env = NULL;
+	int status = 0;
+	if((status = envid2env(envid, &env, 0)))
+    {
+		return status;
+	}
+	wait(&(env->empty), curenv->env_id);
+	wait(&(env->mutex), curenv->env_id);
+	status = enqueue(&env->ipc_queue, curenv->env_id);
+	signal(&env->mutex, env->env_id);
+	signal(&env->full, env->env_id);
+	if(status)
+	{
+		return status;
+	}
+	return 0;
+}
+
+static int
+sys_ipc_dequeue_env()
+{
+	struct Env* env = NULL;
+	envid_t sender_process;
+	int status = 0;
+	wait(&(env->full), curenv->env_id);
+	wait(&(env->mutex), curenv->env_id);
+	status = dequeue(&env->ipc_queue, &sender_process);
+	signal(&env->mutex, env->env_id);
+	signal(&env->empty, env->env_id);
+	if(status == ERROR_QUEUE_EMPTY || status == OP_SUCCESSFUL)
+	{
+        status = wake_up_env(sender_process);
+		if(status)
+		    return status;
+	    return 0;
+	}
+	return status;
+}
+
+int wake_up_env(envid_t envid)
+{
+    struct Env* env = NULL;
+	int status = 0;
+	if((status = envid2env(envid, &env, 0)))
+    {
+		return status;
+	}
+	env->env_status = ENV_RUNNABLE;
+	return 0;
+}
 // Dispatches to the correct kernel function, passing the arguments.
 int32_t
 syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, uint32_t a5)
@@ -430,7 +485,11 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 	case SYS_ipc_try_send:
 	    return sys_ipc_try_send(a1, a2, (void *)a3, a4);		
 	case SYS_ipc_check_recv:
-	    return sys_check_recv_status(a1);		
+	    return sys_check_recv_status(a1);
+	case SYS_ipc_enqueue_env:
+	    return sys_ipc_enqueue_env(a1);	
+	case SYS_ipc_dequeue_env:
+	    return sys_ipc_dequeue_env();					
 	default:
 		return -E_INVAL;
 	}

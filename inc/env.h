@@ -49,7 +49,7 @@ typedef struct{
 
 typedef struct{
     queue blocked_process;
-	uint32_t value;
+	volatile uint32_t value;
 } semaphore;
 
 struct Env {
