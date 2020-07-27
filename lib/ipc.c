@@ -62,13 +62,24 @@ ipc_send(envid_t to_env, uint32_t val, void *pg, int perm)
 		pg =  (void *)UTOP;
 	}
 	int status = -1;
-    while(status)
+    /*while(status)
 	{
 		status = sys_ipc_try_send(to_env, val, pg, perm);
 		if((status) && status != -E_IPC_NOT_RECV)
 		   panic("ipc_send: send not successful");
 		sys_yield();   
+	}*/
+	if(sys_ipc_check_recv(to_env) == 0)
+	{
+		if((status = sys_ipc_enqueue_env(to_env)))
+		{
+			panic("ipc_send: enqueue failed");
+		}
+		sys_yield();
 	}
+	status = sys_ipc_try_send(to_env, val, pg, perm);
+	if((status) && status != -E_IPC_NOT_RECV)
+		panic("ipc_send: send not successful");
 }
 
 // Find the first environment of the given type.  We'll use this to

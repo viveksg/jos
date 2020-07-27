@@ -56,6 +56,7 @@ int	sys_ipc_recv(void *rcv_pg);
 int sys_ipc_check_recv(envid_t );
 int sys_ipc_enqueue_env(envid_t );
 int sys_ipc_dequeue_env();
+int sys_init_ipc_vals(envid_t);
 // This must be inlined.  Exercise for reader: why?
 static inline envid_t __attribute__((always_inline))
 sys_exofork(void)

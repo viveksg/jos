@@ -22,3 +22,9 @@ int dequeue(queue* queue, envid_t *value)
    queue->front  = (queue->front + 1) % QUEUE_SIZE;
    return OP_SUCCESSFUL;
 }
+
+void init_queue(queue *queue)
+{
+    queue->front = FRONT_DEFAULT;
+    queue->rear = REAR_DEFAULT;
+}

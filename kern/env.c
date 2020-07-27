@@ -14,6 +14,8 @@
 #include <kern/sched.h>
 #include <kern/cpu.h>
 #include <kern/spinlock.h>
+#include <kern/semaphore.h>
+#include <kern/queue.h>
 
 struct Env *envs = NULL;		// All environments
 static struct Env *env_free_list;	// Free environment list
@@ -126,6 +128,10 @@ env_init(void)
 		envs[i].env_id = 0;
 		envs[i].env_link = env_free_list;
 		env_free_list = &envs[i];
+		init_queue(&(envs[i].ipc_queue));
+		init_semaphore(&(envs[i].full),SEMA_FULL);
+		init_semaphore(&(envs[i].empty),SEMA_EMPTY);
+        init_semaphore(&(envs[i].mutex),SEMA_MUTEX);
 	}
 	// Per-CPU part of the initialization
 	env_init_percpu();

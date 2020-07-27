@@ -378,6 +378,7 @@ sys_ipc_recv(void *dstva)
 	curenv->env_ipc_recving = 1;
 	curenv->env_ipc_dstva = dstva;
     curenv->env_status = ENV_NOT_RUNNABLE;
+	int status = perform_dequeue();
 	return 0;
 }
 
@@ -402,11 +403,7 @@ sys_ipc_enqueue_env(envid_t envid)
     {
 		return status;
 	}
-	wait(&(env->empty), curenv->env_id);
-	wait(&(env->mutex), curenv->env_id);
 	status = enqueue(&env->ipc_queue, curenv->env_id);
-	signal(&env->mutex, env->env_id);
-	signal(&env->full, env->env_id);
 	if(status)
 	{
 		return status;
@@ -417,17 +414,20 @@ sys_ipc_enqueue_env(envid_t envid)
 static int
 sys_ipc_dequeue_env()
 {
+	return perform_dequeue();
+}
+
+int perform_dequeue()
+{
 	struct Env* env = NULL;
 	envid_t sender_process;
 	int status = 0;
-	wait(&(env->full), curenv->env_id);
-	wait(&(env->mutex), curenv->env_id);
-	status = dequeue(&env->ipc_queue, &sender_process);
-	signal(&env->mutex, env->env_id);
-	signal(&env->empty, env->env_id);
-	if(status == ERROR_QUEUE_EMPTY || status == OP_SUCCESSFUL)
-	{
-        status = wake_up_env(sender_process);
+	status = dequeue(&curenv->ipc_queue, &sender_process);
+	if(status == ERROR_QUEUE_EMPTY)
+	   return 0;
+    if(status == OP_SUCCESSFUL)
+	{    
+		status = wake_up_env(sender_process);
 		if(status)
 		    return status;
 	    return 0;
@@ -443,8 +443,29 @@ int wake_up_env(envid_t envid)
     {
 		return status;
 	}
-	env->env_status = ENV_RUNNABLE;
 	return 0;
+}
+
+static 
+int sys_init_ipc_vals(envid_t envid)
+{
+	return perform_init(envid);
+}
+
+int perform_init(envid_t envid)
+{
+	struct Env* env = NULL;
+	int status = 0;
+	if((status = envid2env(envid, &env, 0)))
+    {
+		return status;
+	}
+
+	init_semaphore(&(env->full),SEMA_FULL);
+	init_semaphore(&(env->empty),SEMA_EMPTY);
+    init_semaphore(&(env->mutex),SEMA_MUTEX);
+	init_queue(&(env->ipc_queue));
+    return 0;
 }
 // Dispatches to the correct kernel function, passing the arguments.
 int32_t
@@ -489,7 +510,9 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 	case SYS_ipc_enqueue_env:
 	    return sys_ipc_enqueue_env(a1);	
 	case SYS_ipc_dequeue_env:
-	    return sys_ipc_dequeue_env();					
+	    return sys_ipc_dequeue_env();	
+	case SYS_init_ipc_vals:
+	    return sys_init_ipc_vals(a1);					
 	default:
 		return -E_INVAL;
 	}

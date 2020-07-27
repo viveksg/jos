@@ -19,6 +19,7 @@ enum {
 	SYS_ipc_check_recv,
 	SYS_ipc_enqueue_env,
 	SYS_ipc_dequeue_env,
+	SYS_init_ipc_vals,
 	NSYSCALLS
 };
 

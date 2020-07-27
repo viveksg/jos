@@ -4,4 +4,5 @@
 
 int wait(semaphore * , envid_t);
 int signal(semaphore * , envid_t);
+void init_semaphore(semaphore *, uint32_t value);
 #endif

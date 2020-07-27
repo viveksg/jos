@@ -8,5 +8,7 @@
 #define ERROR_NOT_SUCCESSFUL 0x1
 #define ERROR_QUEUE_FULL 0x12
 #define ERROR_QUEUE_EMPTY 0x13
-
+#define SEMA_FULL 0x0
+#define SEMA_EMPTY QUEUE_SIZE
+#define SEMA_MUTEX 0x1
 #endif
