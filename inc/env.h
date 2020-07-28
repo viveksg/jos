@@ -41,10 +41,19 @@ enum {
 enum EnvType {
 	ENV_TYPE_USER = 0,
 };
+
 typedef struct{
-	envid_t envs[QUEUE_SIZE];
+    envid_t envid; 
+	uint32_t value; 
+	void *srcva;
+	unsigned perm;
+} ipc_msg;
+
+typedef struct{
+	ipc_msg msgs[QUEUE_SIZE];
 	int front;
 	int rear;
+	int qsize;
 } queue;
 
 typedef struct{

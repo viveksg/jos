@@ -321,10 +321,26 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	    return status;
     }
 	if(!env->env_ipc_recving)
-	{
-		return -E_IPC_NOT_RECV;
+	{   
+		ipc_msg msg = {curenv->env_id, value, srcva, perm};
+		status = enqueue(&(env->ipc_queue), msg);
+		if(status)
+		{
+			return status;
+		}
+		curenv->env_status = ENV_NOT_RUNNABLE;
+		sys_yield();
+		return 0;
 	}	
-    return perform_ipc_msg_transfer(curenv->env_id, envid, value, srcva, perm);
+    status = perform_ipc_msg_transfer(curenv->env_id, envid, value, srcva, perm);
+    if(status)
+	{
+		return status;
+	}
+	env->env_ipc_recving = 0;
+	env->env_status = ENV_RUNNABLE;
+	env->env_tf.tf_regs.reg_eax = 0;
+    return 0;
 }
 
 int perform_ipc_msg_transfer(envid_t sender_envid, envid_t envid, uint32_t value, void *srcva, unsigned perm)
@@ -361,13 +377,10 @@ int perform_ipc_msg_transfer(envid_t sender_envid, envid_t envid, uint32_t value
 	}
 	else
 	{
-			env->env_ipc_perm = 0;
+		env->env_ipc_perm = 0;
 	}
-	
-	env->env_ipc_recving = 0;
 	env->env_ipc_from = senderenv->env_id;
 	env->env_ipc_value = value;
-	env->env_status = ENV_RUNNABLE;
 	return 0;
 }
 // Block until a value is ready.  Record that you want to receive
@@ -388,15 +401,25 @@ sys_ipc_recv(void *dstva)
 	{
 		return -E_INVAL;
 	}
-	curenv->env_ipc_recving = 1;
+    int status = 0;
+	
 	curenv->env_ipc_dstva = dstva;
+	if(curenv->ipc_queue.qsize > 0)
+	{  
+	   ipc_msg msg = {-1,0,0,0};
+	   status =  dequeue(&(curenv->ipc_queue), &msg);
+	   status |= (msg.envid == -1);
+	   status |= perform_ipc_msg_transfer(msg.envid, curenv->env_id, msg.value, msg.srcva, msg.perm);
+       status |= wake_sleep_process(msg.envid);
+	   return status;
+	}
+    curenv->env_ipc_recving = 1;
     curenv->env_status = ENV_NOT_RUNNABLE;
-	int status = perform_dequeue();
+	sys_yield();
 	return 0;
 }
 
-static int
-sys_check_recv_status(envid_t envid)
+int wake_sleep_process(envid_t envid)
 {
 	struct Env* env = NULL;
 	int status = 0;
@@ -404,43 +427,10 @@ sys_check_recv_status(envid_t envid)
     {
 		return status;
 	}
-	return env->env_ipc_recving;
-}
-
-static int
-sys_ipc_enqueue_env(envid_t envid)
-{
-	struct Env* env = NULL;
-	int status = 0;
-	if((status = envid2env(envid, &env, 0)))
-    {
-		return status;
-	}
-	status = enqueue(&env->ipc_queue, curenv->env_id);
-	if(status)
-	{
-		return status;
-	}
+	env->env_status = ENV_RUNNABLE;
+	env->env_tf.tf_regs.reg_eax = 0;
 	return 0;
 }
-
-static int
-sys_ipc_dequeue_env()
-{
-	return perform_dequeue();
-}
-
-int perform_dequeue()
-{
-	struct Env* env = NULL;
-	envid_t sender_process;
-	int status = 0;
-	status = dequeue(&curenv->ipc_queue , &sender_process);
-	if(status == ERROR_QUEUE_EMPTY || status == OP_SUCCESSFUL)
-	   return 0;
-	return status;
-}
-
 
 static 
 int sys_init_ipc_vals(envid_t envid)
@@ -457,9 +447,9 @@ int perform_init(envid_t envid)
 		return status;
 	}
 
-	init_semaphore(&(env->full),SEMA_FULL);
-	init_semaphore(&(env->empty),SEMA_EMPTY);
-    init_semaphore(&(env->mutex),SEMA_MUTEX);
+	//init_semaphore(&(env->full),SEMA_FULL);
+	//init_semaphore(&(env->empty),SEMA_EMPTY);
+    //init_semaphore(&(env->mutex),SEMA_MUTEX);
 	init_queue(&(env->ipc_queue));
     return 0;
 }
@@ -500,13 +490,7 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 	case SYS_ipc_recv:
 	    return sys_ipc_recv((void *) a1);
 	case SYS_ipc_try_send:
-	    return sys_ipc_try_send(a1, a2, (void *)a3, a4);		
-	case SYS_ipc_check_recv:
-	    return sys_check_recv_status(a1);
-	case SYS_ipc_enqueue_env:
-	    return sys_ipc_enqueue_env(a1);	
-	case SYS_ipc_dequeue_env:
-	    return sys_ipc_dequeue_env();	
+	    return sys_ipc_try_send(a1, a2, (void *)a3, a4);	
 	case SYS_init_ipc_vals:
 	    return sys_init_ipc_vals(a1);					
 	default:

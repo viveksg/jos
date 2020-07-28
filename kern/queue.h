@@ -2,7 +2,7 @@
 #define JOS_KERN_QUEUE_H
 
 #include <inc/env.h>
-int enqueue(queue* , envid_t );
-int dequeue(queue* , envid_t *);
+int enqueue(queue* , ipc_msg );
+int dequeue(queue* , ipc_msg *);
 void init_queue(queue *);
 #endif
