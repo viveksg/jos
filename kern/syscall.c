@@ -324,11 +324,25 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	{
 		return -E_IPC_NOT_RECV;
 	}	
+    return perform_ipc_msg_transfer(curenv->env_id, envid, value, srcva, perm);
+}
 
+int perform_ipc_msg_transfer(envid_t sender_envid, envid_t envid, uint32_t value, void *srcva, unsigned perm)
+{ 
+    struct Env* env = NULL;
+	struct Env* senderenv = NULL;
+	int enval = 0;
+	int status = envid2env(envid, &env, 0) |envid2env(sender_envid, &senderenv, 0) ;
+	uint32_t inverted_psyscall = ~PTE_SYSCALL;
+	if(status)
+	{
+		return status;
+	}
+	
 	if((uint32_t)srcva < UTOP)
 	{   
 		pte_t *pte = NULL;
-		struct PageInfo* pp = page_lookup(curenv->env_pgdir, srcva, &pte);
+		struct PageInfo* pp = page_lookup(senderenv->env_pgdir, srcva, &pte);
 		uint32_t page_perms = (*pte & 0xFFF);
 	    enval = PGOFF(srcva);
 		enval |= (perm & inverted_psyscall);
@@ -351,12 +365,11 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	}
 	
 	env->env_ipc_recving = 0;
-	env->env_ipc_from = curenv->env_id;
+	env->env_ipc_from = senderenv->env_id;
 	env->env_ipc_value = value;
 	env->env_status = ENV_RUNNABLE;
 	return 0;
 }
-
 // Block until a value is ready.  Record that you want to receive
 // using the env_ipc_recving and env_ipc_dstva fields of struct Env,
 // mark yourself not runnable, and then give up the CPU.
@@ -422,29 +435,12 @@ int perform_dequeue()
 	struct Env* env = NULL;
 	envid_t sender_process;
 	int status = 0;
-	status = dequeue(&curenv->ipc_queue, &sender_process);
-	if(status == ERROR_QUEUE_EMPTY)
+	status = dequeue(&curenv->ipc_queue , &sender_process);
+	if(status == ERROR_QUEUE_EMPTY || status == OP_SUCCESSFUL)
 	   return 0;
-    if(status == OP_SUCCESSFUL)
-	{    
-		status = wake_up_env(sender_process);
-		if(status)
-		    return status;
-	    return 0;
-	}
 	return status;
 }
 
-int wake_up_env(envid_t envid)
-{
-    struct Env* env = NULL;
-	int status = 0;
-	if((status = envid2env(envid, &env, 0)))
-    {
-		return status;
-	}
-	return 0;
-}
 
 static 
 int sys_init_ipc_vals(envid_t envid)
