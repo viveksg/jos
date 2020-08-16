@@ -8,7 +8,14 @@
 .set PROT_MODE_CSEG, 0x8         # kernel code segment selector
 .set PROT_MODE_DSEG, 0x10        # kernel data segment selector
 .set CR0_PE_ON,      0x1         # protected mode enable flag
-
+.set CR4_PSE_ON,     0x10        # page size extension flag 
+.set PROCESSOR_MODEL, 0xF0       # Processor model is stored in bit 4-7 in eax
+.set PROCESSOR_FAMILY, 0xF00     # Processor family is stored in bits 8-11 in eax
+.set PENTIUM_IDENTIFIER, 0x01    # Identifier for pentium processor
+.set PENTIUM_FAMILY_ID, 0x05     # COde for pentium family processor
+.set IDENTIFICATION_TYPE, 0x01   # Value to be set in eax, for model info operation
+.set ID_BIT_SET, 0x200000 # Value to be set in eax, for CPUID support detection
+.set ZERO, 0x0
 .globl start
 start:
   .code16                     # Assemble for 16-bit mode
@@ -64,7 +71,49 @@ protcseg:
   movw    %ax, %gs                # -> GS
   movw    %ax, %ss                # -> SS: Stack Segment
   
+  pushl %edx
+  movl %esp, %edx
+cpuid_support_check:
+  pushfw 
+  movl (%esp), %eax;
+  movl %eax, %ebx
+  xor $ID_BIT_SET, %ebx
+  push %ebx
+  popfw
+  pushfw
+  pop %ebx
+  popfw  # set old value of eflag
+
+compare_eflag_values: 
+  cmp %eax, %ebx
+  je bootmain_call
+
+extract_processor_model:
+  movl $IDENTIFICATION_TYPE, %eax
+  cpuid
+  push %eax
+  
+processor_family_check:
+  andl $PROCESSOR_FAMILY, %eax
+  cmp $PENTIUM_FAMILY_ID, %eax
+  jl bootmain_call
+
+processor_model_check:
+  pop %eax
+  andl $PROCESSOR_MODEL, %eax
+  cmp $PENTIUM_IDENTIFIER, %eax 
+  jge pagesizeext
+  jmp bootmain_call
+
+pagesizeext:
+  movl  %cr4, %eax
+  orl   $CR4_PSE_ON, %eax
+  movl  %eax, %cr4
+
+bootmain_call:
   # Set up the stack pointer and call into C.
+  movl %edx, %esp
+  popl %edx
   movl    $start, %esp
   call bootmain
 

@@ -32,6 +32,14 @@
 
 .set PROT_MODE_CSEG, 0x8	# kernel code segment selector
 .set PROT_MODE_DSEG, 0x10	# kernel data segment selector
+.set CR4_PSE_ON,     0x10        # page size extension flag 
+.set PROCESSOR_MODEL, 0xF0       # Processor model is stored in bit 4-7 in eax
+.set PROCESSOR_FAMILY, 0xF00     # Processor family is stored in bits 8-11 in eax
+.set PENTIUM_IDENTIFIER, 0x01    # Identifier for pentium processor
+.set PENTIUM_FAMILY_ID, 0x05     # COde for pentium family processor
+.set IDENTIFICATION_TYPE, 0x01   # Value to be set in eax, for model info operation
+.set ID_BIT_SET, 0x200000 # Value to be set in eax, for CPUID support detection
+.set ZERO, 0x0
 
 .code16           
 .globl mpentry_start
@@ -59,23 +67,65 @@ start32:
 	movw    $0, %ax
 	movw    %ax, %fs
 	movw    %ax, %gs
-
+    
 	# Set up initial page table. We cannot use kern_pgdir yet because
 	# we are still running at a low EIP.
 	movl    $(RELOC(entry_pgdir)), %eax
 	movl    %eax, %cr3
+    
 	# Turn on paging.
 	movl    %cr0, %eax
 	orl     $(CR0_PE|CR0_PG|CR0_WP), %eax
 	movl    %eax, %cr0
-
+    
 	# Switch to the per-cpu stack allocated in boot_aps()
 	movl    mpentry_kstack, %esp
 	movl    $0x0, %ebp       # nuke frame pointer
+    
+    # Enable page size extension
+    cpuid_support_check:
+      pushfw 
+      movl (%esp), %eax;
+      movl %eax, %ebx
+      xor $ID_BIT_SET, %ebx
+      push %ebx
+      popfw
+      pushfw
+      pop %ebx
+      popfw  # set old value of eflag
 
+    compare_eflag_values: 
+      cmp %eax, %ebx
+      je mp_mainf
+
+    extract_processor_model:
+      movl $IDENTIFICATION_TYPE, %eax
+      cpuid
+      push %eax
+  
+    processor_family_check:
+      andl $PROCESSOR_FAMILY, %eax
+      cmp $PENTIUM_FAMILY_ID, %eax
+      jl mp_mainf
+
+    processor_model_check:
+      pop %eax
+      andl $PROCESSOR_MODEL, %eax
+      cmp $PENTIUM_IDENTIFIER, %eax 
+      jge pagesizeext
+      jmp mp_mainf
+
+    pagesizeext:
+      movl  %cr4, %eax
+      orl   $CR4_PSE_ON, %eax
+      movl  %eax, %cr4
+
+    mp_mainf:
+	   movl mpentry_kstack, %esp
+	   	   
 	# Call mp_main().  (Exercise for the reader: why the indirect call?)
-	movl    $mp_main, %eax
-	call    *%eax
+       movl    $mp_main, %eax
+	   call    *%eax
 
 	# If mp_main returns (it shouldn't), loop.
 spin:

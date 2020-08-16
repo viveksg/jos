@@ -8,11 +8,8 @@
 void sched_halt(void);
 
 // Choose a user environment to run and run it.
-void
-sched_yield(void)
+void sched_yield(void)
 {
-	struct Env *idle;
-
 	// Implement simple round-robin scheduling.
 	//
 	// Search through 'envs' for an ENV_RUNNABLE environment in
@@ -29,8 +26,27 @@ sched_yield(void)
 	// no runnable environments, simply drop through to the code
 	// below to halt the cpu.
 
-	// LAB 4: Your code here.
+	struct Env *current_environment = curenv;
+	uint32_t i = 0, j = 0, start_index = 0;
+	uint32_t mod_val = NENV - 1;
 
+	if (current_environment != NULL)
+	{
+		start_index = ENVX(current_environment->env_id) + 1;
+	}
+	uint32_t end_index = start_index + NENV;
+	for (i = start_index; i < end_index; i++)
+	{
+		j = i & mod_val;
+		if (envs[j].env_status == ENV_RUNNABLE)
+		{
+			env_run(&envs[j]);
+		}
+	}
+	if (current_environment != NULL && current_environment->env_status == ENV_RUNNING)
+	{
+		env_run(current_environment);
+	}
 	// sched_halt never returns
 	sched_halt();
 }
@@ -38,20 +54,21 @@ sched_yield(void)
 // Halt this CPU when there is nothing to do. Wait until the
 // timer interrupt wakes it up. This function never returns.
 //
-void
-sched_halt(void)
+void sched_halt(void)
 {
 	int i;
 
 	// For debugging and testing purposes, if there are no runnable
 	// environments in the system, then drop into the kernel monitor.
-	for (i = 0; i < NENV; i++) {
+	for (i = 0; i < NENV; i++)
+	{
 		if ((envs[i].env_status == ENV_RUNNABLE ||
-		     envs[i].env_status == ENV_RUNNING ||
-		     envs[i].env_status == ENV_DYING))
+			 envs[i].env_status == ENV_RUNNING ||
+			 envs[i].env_status == ENV_DYING))
 			break;
 	}
-	if (i == NENV) {
+	if (i == NENV)
+	{
 		cprintf("No runnable environments in the system!\n");
 		while (1)
 			monitor(NULL);
@@ -70,16 +87,16 @@ sched_halt(void)
 	unlock_kernel();
 
 	// Reset stack pointer, enable interrupts and then halt.
-	asm volatile (
+	asm volatile(
 		"movl $0, %%ebp\n"
 		"movl %0, %%esp\n"
 		"pushl $0\n"
 		"pushl $0\n"
 		// Uncomment the following line after completing exercise 13
-		//"sti\n"
+		"sti\n"
 		"1:\n"
 		"hlt\n"
 		"jmp 1b\n"
-	: : "a" (thiscpu->cpu_ts.ts_esp0));
+		:
+		: "a"(thiscpu->cpu_ts.ts_esp0));
 }
-
